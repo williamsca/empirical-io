@@ -17,6 +17,9 @@ dt <- as.data.table(read_dta("HW1/GMdata.dta"))
 dt[, yrsPresent := .N, by = .(index)]
 dt[, d357 := (sic3 == 357)]
 
+dt[, yrsRange := max(yr) - min(yr), by = .(index)]
+table(dt[, .(yrsPresent, yrsRange)]) # NOTE: the same firm may exit one year and reappear later
+
 # Q1: Summary Statistics ----
 stargazer(dt, summary = TRUE, type = "text", omit = c("index", "sic3", "yr"))
 
@@ -66,10 +69,41 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 # Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
 fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + poly(ldnpt, 2) + poly(ldrst, 2) + poly(ldinv, 2) + as.factor(yr)"
-lm.op <- lm(fmla.op1, data = dt)
-stargazer(lm.op, type = "text", omit = c("d357", "poly"))
+lm.op1 <- lm(fmla.op1, data = dt)
+stargazer(lm.op1, type = "text", omit = c("d357", "poly"))
 
 # ii) 
+dt.shift <- copy(dt)
+
+dt.shift[, lemp := shift(lemp, n = 1L, fill = NA, type = "lead"), by = .(index)]
+dt.shift[, yr := shift(yr, n = 1L, type = "lead"), by = .(index)]
+dt.shift[, d357 := shift(d357, n = 1L, type = "lead"), by = .(index)]
+
+# compute predict sales given this period's employment and year FEs and last period's investment
+dt.shift$predSal <- predict(lm.op1, dt.shift) 
+
+dt <- merge(dt, dt.shift[, .(yr, index, predSal)], by = c("yr", "index"), all.x = TRUE)
+
+dt[, LHS := ldsal - predSal]
+dt[, ldnptDiff := ldnpt - shift(ldnpt, n = 1L, type = "lag"), by = .(index)]
+dt[, ldrstDiff := ldrst - shift(ldrst, n = 1L, type = "lag"), by = .(index)]
+
+fmla.op2 <- "LHS ~ -1 + ldnptDiff +  ldrstDiff + as.factor(yr) + as.factor(index)" # TODO: are these the correct FEs?
+lm.op2 <- lm(fmla.op2, data = dt)
+stargazer(lm.op2, type = "text", omit = c("yr", "index"))
+
+# iii) Use probit model to estimate firm's survival probability
+dt[, existsNextYr := (shift(yr, n = 1L, type = "lead") - yr == 5), by = .(index)]
+dt[is.na(existsNextYr) & yr != 88, existsNextYr := FALSE]
+
+glm.eNY <- glm(existsNextYr ~ ldnpt + ldrst + ldinv, family =  binomial(link = "probit"),
+               data = dt)
+
+dt$P <- predict(glm.eNY, dt)
+
+# sanity checks on predicted probabilities of survival
+summary(dt[existsNextYr == TRUE, P])
+
 
 
 
