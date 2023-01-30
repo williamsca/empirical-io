@@ -69,7 +69,7 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 # Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
 # TODO: verify results are unchanged with poly option raw = TRUE
-fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + poly(ldnpt, 2) + poly(ldrst, 2) + poly(ldinv, 2) + as.factor(yr)"
+fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2) + as.factor(yr)"
 lm.op1 <- lm(fmla.op1, data = dt)
 stargazer(lm.op1, type = "text") # , omit = c("d357", "poly"))
 
@@ -83,48 +83,50 @@ dt.shift[, d357 := shift(d357, n = 1L, type = "lead"), by = .(index)]
 # compute predict sales given this period's employment and year FEs and last period's investment
 dt.shift$predSal <- predict(lm.op1, dt.shift) 
 
-dt <- merge(dt, dt.shift[, .(yr, index, predSal)], by = c("yr", "index"), all.x = TRUE)
+dt.nlpakes <- merge(dt, dt.shift[, .(yr, index, predSal)], by = c("yr", "index"), all.x = TRUE)
 
-dt[, LHS := ldsal - predSal]
-dt[, ldnptDiff := ldnpt - shift(ldnpt, n = 1L, type = "lag"), by = .(index)]
-dt[, ldrstDiff := ldrst - shift(ldrst, n = 1L, type = "lag"), by = .(index)]
+dt.nlpakes[, LHS := ldsal - predSal]
+dt.nlpakes[, ldnptDiff := ldnpt - shift(ldnpt, n = 1L, type = "lag"), by = .(index)]
+dt.nlpakes[, ldrstDiff := ldrst - shift(ldrst, n = 1L, type = "lag"), by = .(index)]
 
-fmla.op2 <- "LHS ~ -1 + ldnptDiff +  ldrstDiff + as.factor(yr) + as.factor(index)" # TODO: are these the correct FEs?
-lm.op2 <- lm(fmla.op2, data = dt)
+fmla.op2 <- "LHS ~ -1 + ldnptDiff +  ldrstDiff" # as.factor(yr) + as.factor(index) TODO: are these the correct FEs?
+lm.op2 <- lm(fmla.op2, data = dt.nlpakes)
 stargazer(lm.op2, type = "text", omit = c("yr", "index"))
 
 # iii) Use probit model to estimate firm's survival probability
-dt[, existsNextYr := (shift(yr, n = 1L, type = "lead") - yr == 5), by = .(index)]
-dt[is.na(existsNextYr) & yr != 88, existsNextYr := FALSE]
+dt.nlpakes[, existsNextYr := (shift(yr, n = 1L, type = "lead") - yr == 5), by = .(index)]
+dt.nlpakes[is.na(existsNextYr) & yr != 88, existsNextYr := FALSE]
 
 glm.eNY <- glm(existsNextYr ~ ldnpt + ldrst + ldinv, family =  binomial(link = "probit"),
-               data = dt)
+               data = dt.nlpakes)
 
-dt$P <- predict(glm.eNY, dt, type = "response")
+dt.nlpakes$P <- predict(glm.eNY, dt.nlpakes, type = "response")
 
 # sanity checks on predicted probabilities of survival
-summary(dt[existsNextYr == TRUE, P])
-summary(dt[existsNextYr == FALSE, P])
+summary(dt.nlpakes[existsNextYr == TRUE, P])
+summary(dt.nlpakes[existsNextYr == FALSE, P])
 
 v.op1coeff <- coefficients(lm.op1)
-v.op2coeff <- coefficients(lm.op2)
 
-dt[, LHSiii := ldsal - v.op1coeff["lemp"]*lemp + v.op1coeff[paste0("as.factor(yr)", yr)] + 
+dt.nlpakes[, LHSiii := ldsal - v.op1coeff["lemp"]*lemp + v.op1coeff[paste0("as.factor(yr)", yr)] + 
      fifelse(d357 == TRUE, v.op1coeff[paste0("as.factor(yr)", yr, ":d357", d357)], 0)] 
 
-dt[, ldnptL1 := shift(ldnpt), by = .(index)]
-dt[, ldrstL1 := shift(ldrst), by = .(index)]
-dt[, ldinvL1 := shift(ldinv), by = .(index)]
+dt.nlpakes[, ldnptL1 := shift(ldnpt), by = .(index)]
+dt.nlpakes[, ldrstL1 := shift(ldrst), by = .(index)]
+dt.nlpakes[, ldinvL1 := shift(ldinv), by = .(index)]
 
-dt[, gArg := (v.op1coeff["poly(ldnpt, 2)1"]*ldnptL1 + 
-              v.op1coeff["poly(ldnpt, 2)2"]*ldnptL1**2 +
-              v.op1coeff["poly(ldrst, 2)1"]*ldrstL1 +
-              v.op1coeff["poly(ldrst, 2)2"]*ldrstL1^2 +
-              v.op1coeff["poly(ldinv, 2)1"]*ldinvL1 +
-              v.op1coeff["poly(ldinv, 2)2"]*ldinvL1^2) - 
-              v.op2coeff["ldnptDiff"]*ldnptL1 -
-              v.op2coeff["ldrstDiff"]*ldrstL1]     
+dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.0.0"]*ldnptL1 + 
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)2.0.0"]*ldnptL1**2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.1.0"]*ldrstL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.2.0"]*ldrstL1^2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.0.1"]*ldinvL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.0.2"]*ldinvL1^2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.1.0"]*ldnptL1*ldrstL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.0.1"]*ldnptL1*ldinvL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.1.1"]*ldrstL1*ldinvL1)]
 
-fmla.op3 <- "LHSiii ~ -1 + ldnpt +  ldrst + polym(gArg, P, degree = 2) + as.factor(yr) + as.factor(index)"
-lm.op3 <- nls(fmla.op3, dt, start = c())
+fmla.op3 <- "LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
+lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a = 0, a1 = 0, a2 = 0))
+
+summary(lm.op3)
 
