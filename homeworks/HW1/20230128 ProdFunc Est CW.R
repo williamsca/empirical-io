@@ -107,10 +107,24 @@ summary(dt[existsNextYr == TRUE, P])
 summary(dt[existsNextYr == FALSE, P])
 
 v.op1coeff <- coefficients(lm.op1)
+v.op2coeff <- coefficients(lm.op2)
 
 dt[, LHSiii := ldsal - v.op1coeff["lemp"]*lemp + v.op1coeff[paste0("as.factor(yr)", yr)] + 
      fifelse(d357 == TRUE, v.op1coeff[paste0("as.factor(yr)", yr, ":d357", d357)], 0)] 
 
-fmla.op3 <- "LHSiii ~ -1 + ldnpt +  ldrst + polym("
-lm.op3 <- nls()
+dt[, ldnptL1 := shift(ldnpt), by = .(index)]
+dt[, ldrstL1 := shift(ldrst), by = .(index)]
+dt[, ldinvL1 := shift(ldinv), by = .(index)]
+
+dt[, gArg := (v.op1coeff["poly(ldnpt, 2)1"]*ldnptL1 + 
+              v.op1coeff["poly(ldnpt, 2)2"]*ldnptL1**2 +
+              v.op1coeff["poly(ldrst, 2)1"]*ldrstL1 +
+              v.op1coeff["poly(ldrst, 2)2"]*ldrstL1^2 +
+              v.op1coeff["poly(ldinv, 2)1"]*ldinvL1 +
+              v.op1coeff["poly(ldinv, 2)2"]*ldinvL1^2) - 
+              v.op2coeff["ldnptDiff"]*ldnptL1 -
+              v.op2coeff["ldrstDiff"]*ldrstL1]     
+
+fmla.op3 <- "LHSiii ~ -1 + ldnpt +  ldrst + polym(gArg, P, degree = 2) + as.factor(yr) + as.factor(index)"
+lm.op3 <- nls(fmla.op3, dt, start = c())
 
