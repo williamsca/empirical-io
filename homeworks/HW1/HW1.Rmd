@@ -1,0 +1,37 @@
+---
+title: "Empirical IO - HW1"
+author: "Colin Williams"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Table 1
+
+```{r, include = FALSE}
+rm(list = ls())
+
+dir <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
+setwd(dir)
+
+pacman::p_load(data.table, haven, stargazer, plm, knitr)
+# haven: read .dta files
+# stargazer: create summary tables
+# plm: panel estimation techniques
+
+dt <- as.data.table(read_dta("HW1/GMdata.dta"))
+
+dt[, yrsPresent := .N, by = .(index)]
+dt[, d357 := (sic3 == 357)]
+```
+
+```{r echo = FALSE}
+stargazer(dt, summary = TRUE, type = "text", omit = c("index", "sic3", "yr"), title  = "Summary Statistics: Full Sample")
+
+stargazer(dt[yrsPresent > 1], summary = TRUE, type = "text", omit = c("index", "sic3", "yr"), title = "Summary Statistics: >1 year firms")
+
+stargazer(dt[yrsPresent == 4], summary = TRUE, type = "text", omit = c("index", "sic3", "yr"), title = "Summary Statistics: Balanced Panel")
+
+table(dt$yr)
+table(dt$sic3)
+```

@@ -34,9 +34,9 @@ table(dt$sic3)
 fmla <- "ldsal ~ -1 + lemp + ldnpt + ldrst + as.factor(yr):d357" # as.factor(yr) + as.factor(index)
 
 # * Full sample ----
-plm.ols <- plm(fmla, data = dt2, model = "pooling", index = c("index", "yr")) # column (3) of Table 3
-plm.with <- plm(fmla, data = dt2, model = "within", index = c("index", "yr"), effect = "twoway")
-plm.bet <- plm(fmla, data = dt2, model = "between", index = c("index", "yr"))
+plm.ols <- plm(fmla, data = dt, model = "pooling", index = c("index", "yr")) # column (3) of Table 3
+plm.with <- plm(fmla, data = dt, model = "within", index = c("index", "yr"), effect = "twoway")
+plm.bet <- plm(fmla, data = dt, model = "between", index = c("index", "yr"))
 plm.re <- plm(fmla, data = dt, model = "random", index = c("index", "yr"))
 
 stargazer(plm.ols, plm.with, plm.bet, plm.re, type = "text", omit = c("yr", "d357", "index"),
@@ -68,9 +68,10 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 
 # Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
+# TODO: verify results are unchanged with poly option raw = TRUE
 fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + poly(ldnpt, 2) + poly(ldrst, 2) + poly(ldinv, 2) + as.factor(yr)"
 lm.op1 <- lm(fmla.op1, data = dt)
-stargazer(lm.op1, type = "text", omit = c("d357", "poly"))
+stargazer(lm.op1, type = "text") # , omit = c("d357", "poly"))
 
 # ii) 
 dt.shift <- copy(dt)
@@ -99,11 +100,17 @@ dt[is.na(existsNextYr) & yr != 88, existsNextYr := FALSE]
 glm.eNY <- glm(existsNextYr ~ ldnpt + ldrst + ldinv, family =  binomial(link = "probit"),
                data = dt)
 
-dt$P <- predict(glm.eNY, dt)
+dt$P <- predict(glm.eNY, dt, type = "response")
 
 # sanity checks on predicted probabilities of survival
 summary(dt[existsNextYr == TRUE, P])
+summary(dt[existsNextYr == FALSE, P])
 
+v.op1coeff <- coefficients(lm.op1)
 
+dt[, LHSiii := ldsal - v.op1coeff["lemp"]*lemp + v.op1coeff[paste0("as.factor(yr)", yr)] + 
+     fifelse(d357 == TRUE, v.op1coeff[paste0("as.factor(yr)", yr, ":d357", d357)], 0)] 
 
+fmla.op3 <- "LHSiii ~ -1 + ldnpt +  ldrst + polym("
+lm.op3 <- nls()
 
