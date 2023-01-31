@@ -23,7 +23,7 @@ pacman::p_load(data.table, haven, stargazer, plm, knitr)
 dt <- as.data.table(read_dta("HW1/GMdata.dta"))
 
 dt[, yrsPresent := .N, by = .(index)]
-dt[, d357 := (sic3 == 357)]
+dt[, d357 := fifelse(sic3 == 357, 1, 0)]
 ```
 
 ```{r echo = FALSE}
@@ -42,7 +42,7 @@ table(dt$sic3)
 
 ```{r echo = FALSE}
 # Q2: Total, between, within, and random effects estimators ----
-fmla <- "ldsal ~ -1 + lemp + ldnpt + ldrst + as.factor(yr):d357" # as.factor(yr) + as.factor(index)
+fmla <- "ldsal ~ -1 + lemp + ldnpt + ldrst + as.factor(yr)*d357"
 
 # * Full sample ----
 plm.ols <- plm(fmla, data = dt, model = "pooling", index = c("index", "yr")) # column (3) of Table 3
@@ -63,7 +63,7 @@ stargazer(plm.ols, plm.with, plm.bet, plm.re, type = "text", omit = c("yr", "d35
 plm.olsB <- plm(fmla, data = dt[yrsPresent == 4], model = "pooling", index = c("index", "yr")) # column (1) of Table 3
 plm.withB <- plm(fmla, data = dt[yrsPresent == 4], model = "within", index = c("index", "yr"), effect = "twoway") # column (2) of Table 3
 plm.betB <- plm(fmla, data = dt[yrsPresent == 4], model = "between", index = c("index", "yr"))
-plm.reB <- plm(fmla, data = dt[yrsPresent == 4], model = "within", index = c("index", "yr"))
+plm.reB <- plm(fmla, data = dt[yrsPresent == 4], model = "random", index = c("index", "yr"))
 
 stargazer(plm.olsB, plm.withB, plm.betB, plm.reB, type = "text", omit = c("yr", "d357", "index"), 
           covariate.labels = c("Labor", "Physical Capital", "R&D Capital"), 
@@ -90,7 +90,7 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 # Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
 # TODO: verify results are unchanged with poly option raw = TRUE
-fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2) + as.factor(yr)"
+fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE) + as.factor(yr)"
 lm.op1 <- lm(fmla.op1, data = dt)
 stargazer(lm.op1, type = "text") # , omit = c("d357", "poly"))
 ```
@@ -142,18 +142,19 @@ dt.nlpakes[, ldnptL1 := shift(ldnpt), by = .(index)]
 dt.nlpakes[, ldrstL1 := shift(ldrst), by = .(index)]
 dt.nlpakes[, ldinvL1 := shift(ldinv), by = .(index)]
 
-dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.0.0"]*ldnptL1 + 
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)2.0.0"]*ldnptL1**2 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.1.0"]*ldrstL1 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.2.0"]*ldrstL1^2 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.0.1"]*ldinvL1 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.0.2"]*ldinvL1^2 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.1.0"]*ldnptL1*ldrstL1 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)1.0.1"]*ldnptL1*ldinvL1 +
-                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2)0.1.1"]*ldrstL1*ldinvL1)]
+dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.0"]*ldnptL1 + 
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)2.0.0"]*ldnptL1**2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.0"]*ldrstL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.2.0"]*ldrstL1^2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.1"]*ldinvL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.2"]*ldinvL1^2 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.1.0"]*ldnptL1*ldrstL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1"]*ldnptL1*ldinvL1 +
+                     v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1"]*ldrstL1*ldinvL1)]
 
 fmla.op3 <- "LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
 lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a = 0, a1 = 0, a2 = 0))
 
 summary(lm.op3)
 ```
+
