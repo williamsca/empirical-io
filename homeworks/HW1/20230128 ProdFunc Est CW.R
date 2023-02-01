@@ -125,7 +125,7 @@ dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TR
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1"]*ldnptL1*ldinvL1 +
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1"]*ldrstL1*ldinvL1)]
 
-fmla.op3 <- "LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
+fmla.op3 <- "LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
 lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a = 0, a1 = 0, a2 = 0))
 
 summary(lm.op3)
