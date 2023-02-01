@@ -357,6 +357,10 @@ display: none;
 
 <div id="question-1-summary-statistics" class="section level1">
 <h1>Question 1: Summary Statistics</h1>
+<p>Firms that are present for more years tend to have more sales, more
+employees, and more capital. The firms that are present in the data are
+a selected sample from the underlying distribution of firm
+productivities.</p>
 <pre><code>## 
 ## Summary Statistics: Full Sample
 ## ============================================
@@ -418,6 +422,11 @@ display: none;
 <div id="question-2-total-between-within-and-random-effects-estimators" class="section level1">
 <h1>Question 2: Total, Between, Within, and Random Effects
 Estimators</h1>
+<p>Our results are consistent with Griliches and Mairess (1995). In
+general, the within estimator yields larger coefficients on labor and
+smaller on physical capital and has larger standard errors.</p>
+<p>The sign of the labor coefficient in the between estimator flips from
+positive to negative depending on the sample (full vs balanced).</p>
 <pre><code>## 
 ## Production Function Parameters: Full Sample
 ## =======================================================================================================================
@@ -471,6 +480,13 @@ Estimators</h1>
 </div>
 <div id="question-3-hausman-test-of-re-vs-fe" class="section level1">
 <h1>Question 3: Hausman Test of RE vs FE</h1>
+<p>I soundly reject the RE model on the full sample (i.e., I reject that
+the RE estimates are consistent) but reject the RE model with only 5%
+confidence in the balanced panel.</p>
+<p>Intuitively, the Hausman test relies on the idea tha the FE and RE
+estimates will be similar if the model is correctly specified. If they
+are too different, it suggests that the random effects assumption does
+not hold.</p>
 <pre><code>## 
 ##  Hausman Test
 ## 
@@ -490,10 +506,9 @@ Estimators</h1>
 <h2>Part (i)</h2>
 <pre class="r"><code># Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
-# TODO: verify results are unchanged with poly option raw = TRUE
 fmla.op1 &lt;- &quot;ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE) + as.factor(yr)&quot;
 lm.op1 &lt;- lm(fmla.op1, data = dt)
-stargazer(lm.op1, type = &quot;text&quot;) # , omit = c(&quot;d357&quot;, &quot;poly&quot;))</code></pre>
+stargazer(lm.op1, type = &quot;text&quot;)</code></pre>
 <pre><code>## 
 ## =====================================================================================
 ##                                                              Dependent variable:     
@@ -568,6 +583,7 @@ stargazer(lm.op1, type = &quot;text&quot;) # , omit = c(&quot;d357&quot;, &quot;
 <pre class="r"><code># ii) 
 dt.shift &lt;- copy(dt)
 
+# create a shifted version of the data where employment and d357 indicate current values and ldrst, ldinv
 dt.shift[, lemp := shift(lemp, n = 1L, fill = NA, type = &quot;lead&quot;), by = .(index)]
 dt.shift[, yr := shift(yr, n = 1L, type = &quot;lead&quot;), by = .(index)]
 dt.shift[, d357 := shift(d357, n = 1L, type = &quot;lead&quot;), by = .(index)]
@@ -661,27 +677,26 @@ dt.nlpakes[, phi := (v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw
                      v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1&quot;]*ldnptL1*ldinvL1 +
                      v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1&quot;]*ldrstL1*ldinvL1)]
 
-fmla.op3 &lt;- &quot;LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)&quot;
-lm.op3 &lt;- nls(fmla.op3, dt.nlpakes, start = list(a = 0, a1 = 0, a2 = 0))
+fmla.op3 &lt;- &quot;LHSiii ~ a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)&quot;
+lm.op3 &lt;- nls(fmla.op3, dt.nlpakes, start = list(a1 = 0, a2 = 0))
 
 summary(lm.op3)</code></pre>
 <pre><code>## 
-## Formula: LHSiii ~ a + a1 * ldnpt + a2 * ldrst + (phi - a1 * ldnpt - a2 * 
-##     ldrst) + (phi - a1 * ldnpt)^2 + P + P^2 + 2 * P * (phi - 
+## Formula: LHSiii ~ a1 * ldnpt + a2 * ldrst + (phi - a1 * ldnpt - a2 * ldrst) + 
+##     (phi - a1 * ldnpt - a2 * ldrst)^2 + P + P^2 + 2 * P * (phi - 
 ##     a1 * ldnpt - a2 * ldrst)
 ## 
 ## Parameters:
-##    Estimate Std. Error t value Pr(&gt;|t|)    
-## a  6.529669   0.021194 308.085  &lt; 2e-16 ***
-## a1 0.476042   0.005162  92.229  &lt; 2e-16 ***
-## a2 0.023353   0.002857   8.174 6.32e-16 ***
+##    Estimate Std. Error t value Pr(&gt;|t|)   
+## a1  0.03660    0.01982   1.846  0.06504 . 
+## a2  0.08208    0.02509   3.272  0.00109 **
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.4133 on 1480 degrees of freedom
+## Residual standard error: 4.188 on 1481 degrees of freedom
 ## 
-## Number of iterations to convergence: 12 
-## Achieved convergence tolerance: 3.698e-06
+## Number of iterations to convergence: 7 
+## Achieved convergence tolerance: 7.525e-06
 ##   (1488 observations deleted due to missingness)</code></pre>
 </div>
 </div>

@@ -22,9 +22,11 @@ pacman::p_load(data.table, haven, stargazer, plm, knitr)
 
 dt <- as.data.table(read_dta("HW1/GMdata.dta"))
 
-dt[, yrsPresent := .N, by = .(index)]
-dt[, d357 := fifelse(sic3 == 357, 1, 0)]
+dt[, yrsPresent := .N, by = .(index)] # count how many years the firm appears in the data
+dt[, d357 := fifelse(sic3 == 357, 1, 0)] # create an indicator for SIC code equal to 357
 ```
+
+Firms that are present for more years tend to have more sales, more employees, and more capital. The firms that are present in the data are a selected sample from the underlying distribution of firm productivities.   
 
 ```{r echo = FALSE}
 # Q1: Summary Statistics ----
@@ -39,6 +41,10 @@ table(dt$sic3)
 ```
 
 # Question 2: Total, Between, Within, and Random Effects Estimators
+
+Our results are consistent with Griliches and Mairess (1995). In general, the within estimator yields larger coefficients on labor and smaller on physical capital and has larger standard errors.
+
+The sign of the labor coefficient in the between estimator flips from positive to negative depending on the sample (full vs balanced). 
 
 ```{r echo = FALSE}
 # Q2: Total, between, within, and random effects estimators ----
@@ -71,7 +77,14 @@ stargazer(plm.olsB, plm.withB, plm.betB, plm.reB, type = "text", omit = c("yr", 
           column.labels = c("Total OLS", "Within","Between", "Random"),
           title = "Production Function Parameters: Balanced Panel")
 ```
+
+
 # Question 3: Hausman Test of RE vs FE
+
+I soundly reject the RE model on the full sample (i.e., I reject that the RE estimates are consistent) but reject the RE model with only 5% confidence in the balanced panel.
+
+Intuitively, the Hausman test relies on the idea tha the FE and RE estimates will be similar if the model is correctly specified. If they are too different, it suggests that the random effects assumption does not hold.
+
 
 ```{r echo = FALSE}
 # Q3: Hausman test of RE vs FE ----
@@ -89,10 +102,9 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 ```{r, include = TRUE}
 # Q4: Olley-Pakes estimator ----
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
-# TODO: verify results are unchanged with poly option raw = TRUE
 fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE) + as.factor(yr)"
 lm.op1 <- lm(fmla.op1, data = dt)
-stargazer(lm.op1, type = "text") # , omit = c("d357", "poly"))
+stargazer(lm.op1, type = "text")
 ```
 
 ## Part (ii)
@@ -100,6 +112,7 @@ stargazer(lm.op1, type = "text") # , omit = c("d357", "poly"))
 # ii) 
 dt.shift <- copy(dt)
 
+# create a shifted version of the data where employment and d357 indicate current values and ldrst, ldinv
 dt.shift[, lemp := shift(lemp, n = 1L, fill = NA, type = "lead"), by = .(index)]
 dt.shift[, yr := shift(yr, n = 1L, type = "lead"), by = .(index)]
 dt.shift[, d357 := shift(d357, n = 1L, type = "lead"), by = .(index)]
@@ -152,8 +165,8 @@ dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TR
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1"]*ldnptL1*ldinvL1 +
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1"]*ldrstL1*ldinvL1)]
 
-fmla.op3 <- "LHSiii ~ a + a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
-lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a = 0, a1 = 0, a2 = 0))
+fmla.op3 <- "LHSiii ~ a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
+lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a1 = 0, a2 = 0))
 
 summary(lm.op3)
 ```
