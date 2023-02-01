@@ -126,7 +126,7 @@ dt.nlpakes[, LHS := ldsal - predSal]
 dt.nlpakes[, ldnptDiff := ldnpt - shift(ldnpt, n = 1L, type = "lag"), by = .(index)]
 dt.nlpakes[, ldrstDiff := ldrst - shift(ldrst, n = 1L, type = "lag"), by = .(index)]
 
-fmla.op2 <- "LHS ~ -1 + ldnptDiff +  ldrstDiff" # as.factor(yr) + as.factor(index) TODO: are these the correct FEs?
+fmla.op2 <- "LHS ~ -1 + ldnptDiff +  ldrstDiff + as.factor(yr)" 
 lm.op2 <- lm(fmla.op2, data = dt.nlpakes)
 stargazer(lm.op2, type = "text", omit = c("yr", "index"))
 ```
