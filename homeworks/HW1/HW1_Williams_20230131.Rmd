@@ -1,6 +1,6 @@
 ---
 title: "Empirical IO - HW1"
-author: "Colin Williams"
+author: "Colin Williams, Mo Van De Sompel, and Makoto Tanaka"
 output:
   html_document: default
   pdf_document: default
@@ -104,11 +104,11 @@ phtest(plm.withB, plm.reB) # p-value is insignificant at 5% --> fail to reject R
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
 fmla.op1 <- "ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE) + as.factor(yr)"
 lm.op1 <- lm(fmla.op1, data = dt)
-stargazer(lm.op1, type = "text")
+stargazer(lm.op1, type = "text", omit = c("polym", "d357"))
 ```
 
 ## Part (ii)
-```{r, include = TRUE}
+```{r, echo = FALSE}
 # ii) 
 dt.shift <- copy(dt)
 
@@ -132,7 +132,7 @@ stargazer(lm.op2, type = "text", omit = c("yr", "index"))
 ```
 
 ## Part (iii)a: Estimate firm survival probability with Probit
-```{r, include = TRUE}
+```{r, echo = FALSE}
 # iii) Use probit model to estimate firm's survival probability
 dt.nlpakes[, existsNextYr := (shift(yr, n = 1L, type = "lead") - yr == 5), by = .(index)]
 dt.nlpakes[is.na(existsNextYr) & yr != 88, existsNextYr := FALSE]
@@ -145,7 +145,7 @@ dt.nlpakes$P <- predict(glm.eNY, dt.nlpakes, type = "response")
 ```
 
 ## Part (iii)b: Incorporate selection into OP estimator
-```{r include = TRUE}
+```{r echo = FALSE}
 v.op1coeff <- coefficients(lm.op1)
 
 dt.nlpakes[, LHSiii := ldsal - v.op1coeff["lemp"]*lemp + v.op1coeff[paste0("as.factor(yr)", yr)] + 
@@ -165,7 +165,7 @@ dt.nlpakes[, phi := (v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TR
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1"]*ldnptL1*ldinvL1 +
                      v.op1coeff["polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1"]*ldrstL1*ldinvL1)]
 
-fmla.op3 <- "LHSiii ~ a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)"
+fmla.op3 <- "LHSiii ~ a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + P*(phi - a1*ldnpt - a2*ldrst)"
 lm.op3 <- nls(fmla.op3, dt.nlpakes, start = list(a1 = 0, a2 = 0))
 
 summary(lm.op3)

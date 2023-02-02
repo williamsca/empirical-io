@@ -9,7 +9,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Colin Williams" />
+<meta name="author" content="Colin Williams, Mo Van De Sompel, and Makoto Tanaka" />
 
 
 <title>Empirical IO - HW1</title>
@@ -350,7 +350,8 @@ display: none;
 
 
 <h1 class="title toc-ignore">Empirical IO - HW1</h1>
-<h4 class="author">Colin Williams</h4>
+<h4 class="author">Colin Williams, Mo Van De Sompel, and Makoto
+Tanaka</h4>
 
 </div>
 
@@ -508,128 +509,62 @@ not hold.</p>
 # i) Predict sales with labor and a polynomial in the predetermined capital stock (ldnpt and ldrst) and investment (ldinv)
 fmla.op1 &lt;- &quot;ldsal ~ -1 + lemp + as.factor(yr):d357 + polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE) + as.factor(yr)&quot;
 lm.op1 &lt;- lm(fmla.op1, data = dt)
-stargazer(lm.op1, type = &quot;text&quot;)</code></pre>
+stargazer(lm.op1, type = &quot;text&quot;, omit = c(&quot;polym&quot;, &quot;d357&quot;))</code></pre>
 <pre><code>## 
-## =====================================================================================
-##                                                              Dependent variable:     
-##                                                         -----------------------------
-##                                                                     ldsal            
-## -------------------------------------------------------------------------------------
-## lemp                                                              0.584***           
-##                                                                    (0.013)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.0           0.196***           
-##                                                                    (0.039)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)2.0.0             0.008            
-##                                                                    (0.010)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.0           0.057***           
-##                                                                    (0.020)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.1.0            -0.008            
-##                                                                    (0.009)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.2.0            -0.002            
-##                                                                    (0.004)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.1            0.072*            
-##                                                                    (0.037)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1             0.016            
-##                                                                    (0.017)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1             0.003            
-##                                                                    (0.009)           
-##                                                                                      
-## polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.2            -0.010            
-##                                                                    (0.010)           
-##                                                                                      
-## as.factor(yr)73                                                   3.492***           
-##                                                                    (0.054)           
-##                                                                                      
-## as.factor(yr)78                                                   3.508***           
-##                                                                    (0.053)           
-##                                                                                      
-## as.factor(yr)83                                                   3.441***           
-##                                                                    (0.054)           
-##                                                                                      
-## as.factor(yr)88                                                   3.661***           
-##                                                                    (0.056)           
-##                                                                                      
-## as.factor(yr)73:d357                                              -3.245***          
-##                                                                    (0.083)           
-##                                                                                      
-## as.factor(yr)78:d357                                              -2.037***          
-##                                                                    (0.057)           
-##                                                                                      
-## as.factor(yr)83:d357                                              -0.757***          
-##                                                                    (0.058)           
-##                                                                                      
-## as.factor(yr)88:d357                                              0.408***           
-##                                                                    (0.047)           
-##                                                                                      
-## -------------------------------------------------------------------------------------
-## Observations                                                        2,971            
-## R2                                                                  0.996            
-## Adjusted R2                                                         0.996            
-## Residual Std. Error                                           0.373 (df = 2953)      
-## F Statistic                                             42,469.790*** (df = 18; 2953)
-## =====================================================================================
-## Note:                                                     *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
+## =================================================
+##                          Dependent variable:     
+##                     -----------------------------
+##                                 ldsal            
+## -------------------------------------------------
+## lemp                          0.584***           
+##                                (0.013)           
+##                                                  
+## as.factor(yr)73               3.492***           
+##                                (0.054)           
+##                                                  
+## as.factor(yr)78               3.508***           
+##                                (0.053)           
+##                                                  
+## as.factor(yr)83               3.441***           
+##                                (0.054)           
+##                                                  
+## as.factor(yr)88               3.661***           
+##                                (0.056)           
+##                                                  
+## -------------------------------------------------
+## Observations                    2,971            
+## R2                              0.996            
+## Adjusted R2                     0.996            
+## Residual Std. Error       0.373 (df = 2953)      
+## F Statistic         42,469.790*** (df = 18; 2953)
+## =================================================
+## Note:                 *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
 </div>
 <div id="part-ii" class="section level2">
 <h2>Part (ii)</h2>
-<pre class="r"><code># ii) 
-dt.shift &lt;- copy(dt)
-
-# create a shifted version of the data where employment and d357 indicate current values and ldrst, ldinv
-dt.shift[, lemp := shift(lemp, n = 1L, fill = NA, type = &quot;lead&quot;), by = .(index)]
-dt.shift[, yr := shift(yr, n = 1L, type = &quot;lead&quot;), by = .(index)]
-dt.shift[, d357 := shift(d357, n = 1L, type = &quot;lead&quot;), by = .(index)]
-
-# compute predict sales given this period&#39;s employment and year FEs and last period&#39;s investment
-dt.shift$predSal &lt;- predict(lm.op1, dt.shift) 
-
-dt.nlpakes &lt;- merge(dt, dt.shift[, .(yr, index, predSal)], by = c(&quot;yr&quot;, &quot;index&quot;), all.x = TRUE)
-
-dt.nlpakes[, LHS := ldsal - predSal]
-dt.nlpakes[, ldnptDiff := ldnpt - shift(ldnpt, n = 1L, type = &quot;lag&quot;), by = .(index)]
-dt.nlpakes[, ldrstDiff := ldrst - shift(ldrst, n = 1L, type = &quot;lag&quot;), by = .(index)]
-
-fmla.op2 &lt;- &quot;LHS ~ -1 + ldnptDiff +  ldrstDiff&quot; # as.factor(yr) + as.factor(index) TODO: are these the correct FEs?
-lm.op2 &lt;- lm(fmla.op2, data = dt.nlpakes)
-stargazer(lm.op2, type = &quot;text&quot;, omit = c(&quot;yr&quot;, &quot;index&quot;))</code></pre>
 <pre><code>## 
 ## ===============================================
 ##                         Dependent variable:    
 ##                     ---------------------------
 ##                                 LHS            
 ## -----------------------------------------------
-## ldnptDiff                    0.277***          
+## ldnptDiff                    0.289***          
 ##                               (0.019)          
 ##                                                
-## ldrstDiff                    0.074***          
-##                               (0.020)          
+## ldrstDiff                    0.064***          
+##                               (0.024)          
 ##                                                
 ## -----------------------------------------------
 ## Observations                   1,571           
-## R2                             0.226           
-## Adjusted R2                    0.225           
-## Residual Std. Error      0.344 (df = 1569)     
-## F Statistic          229.260*** (df = 2; 1569) 
+## R2                             0.229           
+## Adjusted R2                    0.226           
+## Residual Std. Error      0.344 (df = 1566)     
+## F Statistic          92.932*** (df = 5; 1566)  
 ## ===============================================
 ## Note:               *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
 </div>
 <div id="part-iiia-estimate-firm-survival-probability-with-probit" class="section level2">
 <h2>Part (iii)a: Estimate firm survival probability with Probit</h2>
-<pre class="r"><code># iii) Use probit model to estimate firm&#39;s survival probability
-dt.nlpakes[, existsNextYr := (shift(yr, n = 1L, type = &quot;lead&quot;) - yr == 5), by = .(index)]
-dt.nlpakes[is.na(existsNextYr) &amp; yr != 88, existsNextYr := FALSE]
-
-glm.eNY &lt;- glm(existsNextYr ~ ldnpt + ldrst + ldinv, family =  binomial(link = &quot;probit&quot;),
-               data = dt.nlpakes)
-stargazer(glm.eNY, type = &quot;text&quot;)</code></pre>
 <pre><code>## 
 ## =============================================
 ##                       Dependent variable:    
@@ -654,49 +589,25 @@ stargazer(glm.eNY, type = &quot;text&quot;)</code></pre>
 ## Akaike Inf. Crit.          2,744.602         
 ## =============================================
 ## Note:             *p&lt;0.1; **p&lt;0.05; ***p&lt;0.01</code></pre>
-<pre class="r"><code>dt.nlpakes$P &lt;- predict(glm.eNY, dt.nlpakes, type = &quot;response&quot;)</code></pre>
 </div>
 <div id="part-iiib-incorporate-selection-into-op-estimator" class="section level2">
 <h2>Part (iii)b: Incorporate selection into OP estimator</h2>
-<pre class="r"><code>v.op1coeff &lt;- coefficients(lm.op1)
-
-dt.nlpakes[, LHSiii := ldsal - v.op1coeff[&quot;lemp&quot;]*lemp + v.op1coeff[paste0(&quot;as.factor(yr)&quot;, yr)] + 
-     fifelse(d357 == TRUE, v.op1coeff[paste0(&quot;as.factor(yr)&quot;, yr, &quot;:d357&quot;, d357)], 0)] 
-
-dt.nlpakes[, ldnptL1 := shift(ldnpt), by = .(index)]
-dt.nlpakes[, ldrstL1 := shift(ldrst), by = .(index)]
-dt.nlpakes[, ldinvL1 := shift(ldinv), by = .(index)]
-
-dt.nlpakes[, phi := (v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.0&quot;]*ldnptL1 + 
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)2.0.0&quot;]*ldnptL1**2 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.0&quot;]*ldrstL1 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.2.0&quot;]*ldrstL1^2 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.1&quot;]*ldinvL1 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.0.2&quot;]*ldinvL1^2 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.1.0&quot;]*ldnptL1*ldrstL1 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)1.0.1&quot;]*ldnptL1*ldinvL1 +
-                     v.op1coeff[&quot;polym(ldnpt, ldrst, ldinv, degree = 2, raw = TRUE)0.1.1&quot;]*ldrstL1*ldinvL1)]
-
-fmla.op3 &lt;- &quot;LHSiii ~ a1*ldnpt + a2*ldrst + (phi - a1*ldnpt - a2*ldrst) + (phi - a1*ldnpt - a2*ldrst)^2 + P + P^2 + 2*P*(phi - a1*ldnpt - a2*ldrst)&quot;
-lm.op3 &lt;- nls(fmla.op3, dt.nlpakes, start = list(a1 = 0, a2 = 0))
-
-summary(lm.op3)</code></pre>
 <pre><code>## 
 ## Formula: LHSiii ~ a1 * ldnpt + a2 * ldrst + (phi - a1 * ldnpt - a2 * ldrst) + 
-##     (phi - a1 * ldnpt - a2 * ldrst)^2 + P + P^2 + 2 * P * (phi - 
+##     (phi - a1 * ldnpt - a2 * ldrst)^2 + P + P^2 + P * (phi - 
 ##     a1 * ldnpt - a2 * ldrst)
 ## 
 ## Parameters:
 ##    Estimate Std. Error t value Pr(&gt;|t|)   
-## a1  0.03660    0.01982   1.846  0.06504 . 
-## a2  0.08208    0.02509   3.272  0.00109 **
+## a1 0.008143   0.021348   0.381  0.70294   
+## a2 0.071124   0.027134   2.621  0.00885 **
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 4.188 on 1481 degrees of freedom
+## Residual standard error: 4.259 on 1481 degrees of freedom
 ## 
-## Number of iterations to convergence: 7 
-## Achieved convergence tolerance: 7.525e-06
+## Number of iterations to convergence: 8 
+## Achieved convergence tolerance: 5.642e-06
 ##   (1488 observations deleted due to missingness)</code></pre>
 </div>
 </div>
