@@ -7,59 +7,89 @@ rm(list = ls())
 dir <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
 setwd(dir)
 
-pacman::p_load(data.table, haven, stargazer, plm)
+pacman::p_load(data.table, haven, stargazer, stats4)
 # haven: read .dta files
 # stargazer: create summary tables
+# stats4: maximum-likelihood estimation
 
 dt <- as.data.table(read_dta("HW2/railway.dta"))
 setcolorder(dt, neworder = c("week", "month", "gr", "tgq", "lakes", "po"))
+
+dt[, month4 := ((floor((week - 1) / 4))) %% 13 + 1]
+dt[, year := 1880 + floor((week - 1) / 52)]
+dt[ , weekOfYear := seq_len(.N), by = year]
+
+dt[, DM1 := fifelse(inrange(week, 28, 52*3 + 10), 1, 0)]
+dt[, DM2 := fifelse(inrange(week, 167, 181), 1, 0)]
+dt[, DM3 := fifelse(inrange(week, 182, 323), 1, 0)]
+dt[, DM4 := fifelse(week >= 324, 1, 0)]
+
+dt[, `:=`(lngr = log(gr), lntgq = log(tgq))]
 
 # Table 2: Summary Statistics ----
 
 stargazer(dt, summary  = TRUE, nobs = FALSE, type = "text", keep = c("gr", "tgq", "lakes", "po"))
 
-
 # Table 3: Estimation Results ----
 
-dt[, month4 := ((floor((week - 1) / 4))) %% 13 + 1]
+# * Columns (1) and (2): 2SLS ----
+lm.FSPrice <- lm(lngr ~ lakes + DM1 + DM2 + DM3 + DM4 + po + as.factor(month4),  data = dt)
+lm.FSQuant <- lm(lntgq ~ lakes + DM1 + DM2 + DM3 + DM4 + po + as.factor(month4),  data = dt)
 
-dt[, year := 1880 + floor((week - 1) / 52)]
-dt[ , weekOfYear := seq_len(.N), by = year]
+dt$grHat <- fitted(lm.FSPrice)
+dt$tgqHat <- fitted(lm.FSQuant)
 
-sort year month week
-by year: gen countweek=_n
+lm.Demand <- lm(lntgq ~ lakes + grHat + month4, data = dt)
+lm.Supply <- lm(lngr ~ DM1 + DM2 + DM3 + DM4 + po + tgqHat + as.factor(month4), data = dt)
 
-ge DM1=1 if _n>=28 & _n<=166
-replace DM1=0 if DM1==.
-ge DM2=1 if _n>=167 & _n<=181
-replace DM2=0 if DM2==.
-ge DM3=1 if _n>=182 & _n<=323
-replace DM3=0 if DM3==.
-ge DM4=1 if _n>=324
-replace DM4=0 if DM4==.
+stargazer(lm.Demand, lm.Supply, type = "text", omit = "month4")
 
-drop countweek year week month
+# * Columns (3) and (4): ML ----
+h_density <- function(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, It) {
+  alpha0 <- params[1]
+  alpha1 <- params[2]
+  alpha2 <- params[3]
+  beta0 <- params[4]
+  beta1 <- params[5]
+  beta21 <- params[6]
+  beta22 <- params[7]
+  beta23 <- params[8]
+  beta24 <- params[9]
+  beta3 <- params[10]
+  sigma11 <- params[11]
+  sigma12 <- params[12]
+  sigma22 <- params[13]
+  
+  yt <- matrix(c(lntgq, lngr), nrow = 2)
+  Xt <- matrix(c(1, lakes, DM1, DM2, DM3, DM4), nrow = 6, ncol = 1)  
+  
+  B <- matrix(c(1, -beta1, -alpha1, 1), nrow = 2, ncol = 2)
+  Delta <- matrix(c(0, beta3), nrow = 2)
+  Gamma <- matrix(c(alpha0, beta0, alpha2, 0, 0, beta21, 0, beta22, 0, beta23, 0, beta24), nrow = 2)
+  Sigma <- matrix(c(sigma11, sigma12, sigma12, sigma22), nrow = 2)
+  SigmaInv <- solve(Sigma)  
+  Omega <- (B%*%yt-Gamma%*%Xt-Delta*It)
 
-* now define seasonal dummies
-ge month1 =  monthdu1+ monthdu14+ monthdu27+ monthdu40+ monthdu53+ monthdu66+ monthdu79
-ge month2 =  monthdu2+ monthdu15+ monthdu28+ monthdu41+ monthdu54+ monthdu67+ monthdu80
-ge month3 =  monthdu3+ monthdu16+ monthdu29+ monthdu42+ monthdu55+ monthdu68+ monthdu81
-ge month4 =  monthdu4+ monthdu17+ monthdu30+ monthdu43+ monthdu56+ monthdu69+ monthdu82
-ge month5 =  monthdu5+ monthdu18+ monthdu31+ monthdu44+ monthdu57+ monthdu70
-ge month6 =  monthdu6+ monthdu19+ monthdu32+ monthdu45+ monthdu58+ monthdu71
-ge month7 =  monthdu7+ monthdu20+ monthdu33+ monthdu46+ monthdu59+ monthdu72
-ge month8 =  monthdu8+ monthdu21+ monthdu34+ monthdu47+ monthdu60+ monthdu73
-ge month9 =  monthdu9+ monthdu22+ monthdu35+ monthdu48+ monthdu61+ monthdu74
-ge month10= monthdu10+ monthdu23+ monthdu36+ monthdu49+ monthdu62+ monthdu75
-ge month11= monthdu11+ monthdu24+ monthdu37+ monthdu50+ monthdu63+ monthdu76
-ge month12= monthdu12+ monthdu25+ monthdu38+ monthdu51+ monthdu64+ monthdu77
-drop  monthdu1- monthdu82
+  return(log((2*pi)^(-1)*det(Sigma)^(-1/2)*det(B)*exp(t((-1/2)*Omega) %*% SigmaInv %*% Omega)))
+}
 
-* now take logs
-ge logtgq=log(tgq)
-ge loggr=log(gr)
-drop  gr tgq
+Likelihood <- function(params) { # alpha0, alpha1, alpha2, beta0, beta1, beta21, beta22, beta23, beta24, beta3, sigma11, sigma12, sigma22
+  # params <- c(alpha0, alpha1, alpha2, beta0, beta1, beta21, beta22, beta23, beta24, beta3, sigma11, sigma12, sigma22)
+  dt[, h := h_density(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, It), by = seq_len(nrow(dt))]  
+  return(-sum(dt$h))
+}
 
-# TODO: define DM1, ..., DM4
+dt[, It := po]
 
-# TODO: ask Federico about Q_t, p_t?
+guess <- c(9, -1, -1, -3, 0, 0, 0, 0, 0, .5, .5, 0, .5)
+optim.po <- optim(par = guess, Likelihood)
+
+# * Columns (3) and (4): Kiefer's algorithm ----
+
+
+
+
+
+
+
+
