@@ -1,30 +1,29 @@
-# Replication files for Porter (1983): A study of cartel stability
-# Author: Colin Williams
-# Last updated: 7 Feb 2023
+clear
+set memory 50m
+set more off
 
-rm(list = ls())
+use railway
 
-dir <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
-setwd(dir)
+***************************************************************************************************
+* Table 2
+su  gr tgq lakes po
 
-pacman::p_load(data.table, haven, stargazer, plm)
-# haven: read .dta files
-# stargazer: create summary tables
+***************************************************************************************************
+* Table 3, Column 1
+ge month2=week/4
+replace month2=month2+0.9
+replace month2=int(month2)
+quietly tab month2, generate(monthdu)
+drop month2
 
-dt <- as.data.table(read_dta("HW2/railway.dta"))
-setcolorder(dt, neworder = c("week", "month", "gr", "tgq", "lakes", "po"))
-
-# Table 2: Summary Statistics ----
-
-stargazer(dt, summary  = TRUE, nobs = FALSE, type = "text", keep = c("gr", "tgq", "lakes", "po"))
-
-
-# Table 3: Estimation Results ----
-
-dt[, month4 := ((floor((week - 1) / 4))) %% 13 + 1]
-
-dt[, year := 1880 + floor((week - 1) / 52)]
-dt[ , weekOfYear := seq_len(.N), by = year]
+* following lines just to define DM
+ge year=1880 if week<53
+replace year=1881 if week>52 & week<105
+replace year=1882 if week>104 & week<157
+replace year=1883 if week>156 & week<209
+replace year=1884 if week>208 & week<261
+replace year=1885 if week>260 & week<313
+replace year=1886 if week>312
 
 sort year month week
 by year: gen countweek=_n
@@ -60,6 +59,3 @@ ge logtgq=log(tgq)
 ge loggr=log(gr)
 drop  gr tgq
 
-# TODO: define DM1, ..., DM4
-
-# TODO: ask Federico about Q_t, p_t?
