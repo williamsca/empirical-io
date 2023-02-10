@@ -73,8 +73,7 @@ h_density <- function(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, It) {
   return(log((2*pi)^(-1)*det(Sigma)^(-1/2)*det(B)*exp(t((-1/2)*Omega) %*% SigmaInv %*% Omega)))
 }
 
-Likelihood <- function(params) { # alpha0, alpha1, alpha2, beta0, beta1, beta21, beta22, beta23, beta24, beta3, sigma11, sigma12, sigma22
-  # params <- c(alpha0, alpha1, alpha2, beta0, beta1, beta21, beta22, beta23, beta24, beta3, sigma11, sigma12, sigma22)
+h_Likelihood <- function(params) { 
   dt[, h := h_density(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, It), by = seq_len(nrow(dt))]  
   return(-sum(dt$h))
 }
@@ -83,18 +82,62 @@ dt[, It := po]
 
 guess <- c(9, -1, -1, -3, 0, 0, 0, 0, 0, .5, .5, 0, .5)
 guess2 <- c(0,0,0,0,0,0,0,0,0,0,.5,0,.5)
-optim.po <- optim(par = guess2, Likelihood)
+guess3 <- c(rep(10, 10), .5, 0, .5)
+optim.po <- optim(par = guess, h_Likelihood)
+optim.po2 <- optim(par = guess2, h_Likelihood)
 
 dt.po <- data.table(param = c("alpha0", "alpha1", "alpha2", "beta0", "beta1", "beta21", 
                       "beta22", "beta23", "beta24", "beta3", "sigma11", "sigma12", "sigma22"), 
-                    value = optim.po$par,
+                    value = optim.po$par, value2 = optim.po2$par,
                     `2sls` = c(coefficients(lm.Demand)[1:3], coefficients(lm.Supply)[1:7], 1, 0, 1))
 
 # * Columns (3) and (4): Better ML (if time) ----
-
+Log_Likelihood <- function(params) {
+  alpha0 <- params[1]
+  alpha1 <- params[2]
+  alpha2 <- params[3]
+  beta0 <- params[4]
+  beta1 <- params[5]
+  beta21 <- params[6]
+  beta22 <- params[7]
+  beta23 <- params[8]
+  beta24 <- params[9]
+  beta3 <- params[10]
+  sigma11 <- params[11]
+  sigma12 <- params[12]
+  sigma22 <- params[13]
+  
+  
+}
 
 
 # * Columns (3) and (4): Kiefer's algorithm ----
+f_density <- function(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, l) {
+  lambda <- l
+  return(lambda * h_density(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, 1) +
+         (1-lambda) * h_density(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, 0))
+}
+
+f_Likelihood <- function(params, l) { 
+  dt[, f := f_density(params, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, l), by = seq_len(nrow(dt))]  
+  return(-sum(dt$f))
+}
+
+dt[, w0 := po] # initial guess of regime classification
+
+for (i in 1:10) { # does not converge :/
+  lambda0 <- sum(dt$w0/nrow(dt)) # initial estimate of lambda
+  
+  optim.It <- optim(par = guess, f_Likelihood, l = lambda0)$par
+  
+  dt[, h1 := h_density(optim.It, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, 1), by = seq_len(nrow(dt))]
+  dt[, h0 := h_density(optim.It, lntgq, lngr, lakes, DM1, DM2, DM3, DM4, 0), by = seq_len(nrow(dt))]
+  dt[, w1 := (lambda0*h1) / (lambda0*h1 + (1-lambda0)*h0)]
+  
+  print(cov(dt$w0, dt$w1))
+  
+  dt[, w0 := w1]
+}
 
 
 
