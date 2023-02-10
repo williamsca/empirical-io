@@ -39,8 +39,8 @@ lm.FSQuant <- lm(lntgq ~ lakes + DM1 + DM2 + DM3 + DM4 + po + as.factor(month4),
 dt$grHat <- fitted(lm.FSPrice)
 dt$tgqHat <- fitted(lm.FSQuant)
 
-lm.Demand <- lm(lntgq ~ lakes + grHat + month4, data = dt)
-lm.Supply <- lm(lngr ~ DM1 + DM2 + DM3 + DM4 + po + tgqHat + as.factor(month4), data = dt)
+lm.Demand <- lm(lntgq ~ grHat + lakes + as.factor(month4), data = dt)
+lm.Supply <- lm(lngr ~ tgqHat + DM1 + DM2 + DM3 + DM4 + po + as.factor(month4), data = dt)
 
 stargazer(lm.Demand, lm.Supply, type = "text", omit = "month4")
 
@@ -82,7 +82,17 @@ Likelihood <- function(params) { # alpha0, alpha1, alpha2, beta0, beta1, beta21,
 dt[, It := po]
 
 guess <- c(9, -1, -1, -3, 0, 0, 0, 0, 0, .5, .5, 0, .5)
-optim.po <- optim(par = guess, Likelihood)
+guess2 <- c(0,0,0,0,0,0,0,0,0,0,.5,0,.5)
+optim.po <- optim(par = guess2, Likelihood)
+
+dt.po <- data.table(param = c("alpha0", "alpha1", "alpha2", "beta0", "beta1", "beta21", 
+                      "beta22", "beta23", "beta24", "beta3", "sigma11", "sigma12", "sigma22"), 
+                    value = optim.po$par,
+                    `2sls` = c(coefficients(lm.Demand)[1:3], coefficients(lm.Supply)[1:7], 1, 0, 1))
+
+# * Columns (3) and (4): Better ML (if time) ----
+
+
 
 # * Columns (3) and (4): Kiefer's algorithm ----
 
