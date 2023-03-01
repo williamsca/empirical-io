@@ -89,7 +89,7 @@ ggplot(data = dt, mapping = aes(x = markup.ols)) +
   labs(x = "Lerner Index", y = "Frequency") +
   theme_light()
 
-# OLS w/ FEs ----
+# OLS wtih FEs ----
 fmla.fe <- paste0(fmla, " + tkcarrier")
 utility.olsfe <- lm(fmla.fe, data = dt)
 stargazer(utility.ols, utility.olsfe, type = "text", omit = c("tkcarrier"),
