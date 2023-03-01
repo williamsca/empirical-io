@@ -7,8 +7,7 @@ rm(list = ls())
 dir <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
 setwd(dir)
 
-pacman::p_load(data.table, haven, stargazer, ggplot2, antitrust)
-# antitrust: nested logit demand estimation and merger simulation
+pacman::p_load(data.table, haven, stargazer, ggplot2)
 
 # Question 1: Download airline dataset ----
 dt <- as.data.table(read_dta("HW3/airline1997data.dta"))
