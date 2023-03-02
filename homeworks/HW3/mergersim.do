@@ -11,16 +11,25 @@ egen prodID = group(tkcarrier T100nonstop)
 egen marketID = group(market)
 egen firmID = group(tkcarrier)
 egen carrierGroup = group(carrierType)
+gen inMarket = 1
 
 xtset prodID marketID
 
 // initialize market share variables
-mergersim init, nests(carrierGroup) ///
+mergersim init, nests(inMarket carrierGroup) ///
 	price(MdW_oneway_itinfare_ticket) /// 
 	quantity(totalpassengers) marketsize(marketsize) firm(firmID)
 
 // estimate demand
-xtreg M_ls MdW_oneway_itinfare_ticket M_lsjg nDest ///
+xtreg M_ls MdW_oneway_itinfare_ticket M_lsjh M_lshg nDest ///
 	marketdistanceticket, fe
 
 mergersim market
+
+// simulate a merger between AA and US
+// if market == ...
+mergersim simulate, seller(2) buyer(26) detail
+
+
+// simulate a merger between DL and US
+mergersim simulate, seller(5) buyer(26) detail
