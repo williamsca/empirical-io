@@ -12,10 +12,12 @@ pacman::p_load(data.table, haven, knitr)
 # Q1: Import airline dataset and aggregate to market level ----
 dt <- as.data.table(read_dta("HW3/airline1997data.dta"))
 
+# filter to specified airlines
 dt <- unique(dt[tkcarrier %in% c("AA", "CO", "DL", "NW",  "TW", "UA", "US"), 
                 .(market, tkcarrier, marketdistanceticket)])
-dt[, nFirms := .N, by = .(market)]
 
+# count the number of firms in each market
+dt[, nFirms := .N, by = .(market)]
 dt.market <- unique(dt[, .(nFirms, market, marketdistanceticket)])
 
 # Q2: Replicate Bresnahan and Reiss (1990, 1991) ----
@@ -26,6 +28,7 @@ Profits <- function(params, dist, nFirms) {
   return(dist*alpha + thetas[nFirms])
 }
 
+# define the probability of observing nFirms in a given market
 Prob <- function(params, dist, nFirms) {
   if (nFirms == 0) {
     return(pnorm(-Profits(params, dist, 1), log.p = TRUE))
@@ -36,11 +39,13 @@ Prob <- function(params, dist, nFirms) {
   }
 }
 
+# compute the log likelihood of the observed number of firms across all markets
 Likelihood <- function(params, dist, nFirms) {
   dt.est[, f := Prob(params, marketdistanceticket, nFirms), by = seq_len(nrow(dt.est))]  
   return(-sum(dt.est$f))  
 }
 
+# maximize the log likelihood
 guess <- c(-.005, seq(-.1, -.7, -.1))
 dt.est <- copy(dt.market)
 optim <- optim(par = guess, Likelihood)
