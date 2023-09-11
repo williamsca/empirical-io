@@ -1,0 +1,87 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Empirical IO: HW4
+# Mo Van De Sompel, Makoto Tanaka, and Colin Williams
+Estimate Brenehan and Reiss (1990, 1991) model of firm entry using airline data.
+
+```{r, echo = FALSE}
+rm(list = ls())
+
+dir <- dirname(dirname(rstudioapi::getSourceEditorContext()$path))
+setwd(dir)
+
+pacman::p_load(data.table, haven, knitr)
+
+dt <- as.data.table(read_dta("HW3/airline1997data.dta"))
+```
+
+## Aggregate data to market level
+
+```{r, include = TRUE}
+dt <- unique(dt[tkcarrier %in% c("AA", "CO", "DL", "NW",  "TW", "UA", "US"), 
+                .(market, tkcarrier, marketdistanceticket)])
+dt[, nFirms := .N, by = .(market)]
+
+dt.market <- unique(dt[, .(nFirms, market, marketdistanceticket)])
+```
+
+
+## Estimate profit function paramters via maximum likelihood
+Define the reduced form profit function $$\pi_{im}(N_m) = X_m\alpha + g(N_m) + \epsilon_{0m}$$
+
+where $$g(N_m) = \sum_{j=1}^7\theta_j\mathbf{1}\{N_m = j\}$$
+
+1. The $\alpha$ parameter captures how the profitability of serving a market varies with the flight distance. The $\theta$ parameters measure how the entry of additional firms affect per-firm profits.
+
+2. We make several assumptions to estimate this model:
+- All firms experience an identical market-level profitability shock, $\epsilon_{im} = \epsilon_{0m}$
+- All firms have the same loss in profits due to flight distance, $\alpha_i = \alpha$
+- All firms have an identical effect on their rivals' profits when they enter any market, $\theta_{ijm} = \theta_j$
+- More entrants reduce firm profitability, $\theta_j > \theta_k$ for $j < k$.
+
+These symmetry assumptions allow the econometrician to model the number, rather than the identity, of entering firms.
+
+3. Model estimates:
+
+```{r, echo = FALSE, warnings = FALSE}
+Profits <- function(params, dist, nFirms) {
+  alpha <- params[1]
+  thetas <- params[2:8]
+  
+  return(dist*alpha + thetas[nFirms])
+}
+
+Prob <- function(params, dist, nFirms) {
+  if (nFirms == 0) {
+    return(pnorm(-Profits(params, dist, 1), log.p = TRUE))
+  } else if (nFirms < 7) {
+    return(log(pnorm(Profits(params, dist, nFirms)) - pnorm(Profits(params, dist, nFirms+1))))
+  } else {
+    return(pnorm(Profits(params, dist, nFirms), log.p = TRUE))
+  }
+}
+
+Likelihood <- function(params, dist, nFirms) {
+  dt.est[, f := Prob(params, marketdistanceticket, nFirms), by = seq_len(nrow(dt.est))]  
+  return(-sum(dt.est$f))  
+}
+
+guess <- c(-.005, seq(-.1, -.8, -.1))
+dt.est <- copy(dt.market)
+optim <- optim(par = guess, Likelihood)
+```
+
+```{r, include = TRUE}
+dt.optim <- data.table(Parameter = c("alpha", paste0("theta", 1:7)), Estimate = optim$par)
+kable(dt.optim)
+```
+
+
