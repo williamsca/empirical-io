@@ -2,7 +2,7 @@
 
 ## Estimation FAQ
 Will a consumer with a high marginal utility of income $\alpha_i$ be more likely to purchase or rent?
-> Rent
+> Rent, assuming rental prices are lower than purchase prices.
 
 Why is it useful to include so many free parameters in (2) for this industry?
 > Many of a product’s important attributes, such as the quality of a star’s acting, may be unobservable.
@@ -10,8 +10,58 @@ Why is it useful to include so many free parameters in (2) for this industry?
 What is the interpretation of the $\xi_{r,m,j}$ is (2)?
 > The unobserved quality of a use of title $j$ in market $m$ in format $j$. For example, a rental of title $j$ may be more valuable in market $m$ because of unobservable promotions or community events.
 
-Should we worry about endogeneity? What are plausible sources of endogeneity here?
-> 
+Should we worry about endogeneity? What are plausible sources of endogeneity here? How are they addressed?
+> Typical route: use IV based on variation in costs or supply-side conditions
+> Variation in retailer costs depends on how many times a title is rented
+> This is correlated with local demand!
+> Solution: use *expected* average costs based on similar titles
+> If variation driven only by cost factors (e.g., retailer impatience, managerial skill, etc.), instrument is OK
+> If demand factors play a role (e.g., consumer impatience, etc.), IV estimates are biased
+> Titles with unobservably high quality have higher prices, bias mean price coefficient $\gamma_0$ upward
+> IV, OLS yield similar results: sticky prices $\implies$ no need to instrument, or demand-side bias in IV is large
+
+Moment condition. $W$ includes $Z_m$ (median income) and instruments
+
+Many parameters: 258 $\delta$s, 328 in $\beta$ vector
+
+What is the normalization in the utility function?
+> The value of the outside good for movie 1 on the VHS format is normalized so that $E[X_m\beta_1]$ is equal to a constant. This is done to preserve the geographic variation in the normalization for title 1.
+
+What variation identifies $\gamma$ and $\rho$, which govern the distribution of the marginal utility of income $\alpha$?
+1. The normalization of the quality of the first movie in the first market
+2. Variation in income
+3. Variation across geographies in the market shares of rentals versus sales
+
+## Results
+**Table IV**
+
+Panel A
+- Higher median incomes are associated with higher WTP for movies on tape or DVD (lower marginal utility of income $\alpha$).
+- Larger stores are located in neighborhoods with greater demand for movies
+- Married with kids have preference for DVDs
+- Higher % DVD penetration associated with lower per-household WTP for DVDs... why? High value consumers adopted early, so later adopters drive down average demand.
+
+Panel B
+- Decay rate in quality is .89
+- Renting a VHS yields ~70% of the value of purchasing, while renting a DVD yields only ~50-60%
+
+Panel C
+Calculated directly from data (not estimated)
+- Rental priced VHS used most intensely, then sell-through VHS, and finally DVDs
+- Rental markups highest for sell-through priced VHS
+
+**Scatterplots**
+
+Recall predictions: movies with (1) higher value in rental market and/or (2) slower decay in the sales market should be more likely to be rental priced
+
+Scale each movie's quality parameter by value in the first-period sales market
+
+Horizontal axis shows relative value of each movie in the second-period sales market (i.e., the decay rate)
+
+Figure 1: clear support for prediction (1), more ambiguous on prediction (2)
+
+Figure 2 limits to the 12 movies which were rental priced on VHS. Strong support: VHS titles are both relatively more valuable rentals and relatively more valuable as second period sales.
+
 
 ## Standard Questions
 
