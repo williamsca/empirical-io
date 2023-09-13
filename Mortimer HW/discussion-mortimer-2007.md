@@ -1,5 +1,20 @@
 # Class Discussion of Mortimer (2007)
 
+## Estimation FAQ
+Will a consumer with a high marginal utility of income $\alpha_i$ be more likely to purchase or rent?
+> Rent
+
+Why is it useful to include so many free parameters in (2) for this industry?
+> Many of a product’s important attributes, such as the quality of a star’s acting, may be unobservable.
+
+What is the interpretation of the $\xi_{r,m,j}$ is (2)?
+> The unobserved quality of a use of title $j$ in market $m$ in format $j$. For example, a rental of title $j$ may be more valuable in market $m$ because of unobservable promotions or community events.
+
+Should we worry about endogeneity? What are plausible sources of endogeneity here?
+> 
+
+## Standard Questions
+
 What is the research question?
    
 > Are studio pricing strategies for DVDs and VHS tapes consistent with indirect price discrimination? What are the consumer welfare implications?
@@ -7,7 +22,7 @@ What is the research question?
 What are the goals of the paper? Does the paper aim to develop methods,
 answer a policy question, test models, or measure an effect?
 
-> Test models and measure an effect.
+> Answer a policy question and measure an effect.
 
 Why is the paper important according to the author? Is the author right?
 
