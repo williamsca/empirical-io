@@ -1,0 +1,288 @@
+---
+title: "Problem Set 0 R Version"
+author: "Julie Mortimer and Sravan Ramaswamy"
+date: "8/28/2019"
+output: html_document
+---
+
+#Problem Set 0: Intro to R
+
+Welcome to R, or welcome back if you're here for a refresher. R is a phenomenal tool for any statistician for its wide availability and ease of usage. This problem set will help you acclimate to the process of using R and exploring various packages.
+
+```{r preliminaries, message=FALSE, warning=FALSE}
+# Generally, a good first step in any program is to clear the global environment of variables, otherwise you might encounter interference with your estimates and other such issues.
+rm(list = ls())
+
+#We will be using the following packages in the code
+#In order to use a package with the library function, we have to install it first
+library(varbvs)
+library(matlib)
+library(nloptr)
+library(R.matlab)
+library(pracma)
+
+```
+
+## Problem 1: Loading Script Files
+
+The first objective is to read data from a text file in order to then perform estimations using the data, as well as representing and summarizing the data. Thankfully, doing so in R is remarkably simple and there are many packages available which will enable you to quickly and reliably perform OLS estimations and display data.
+
+```{r textfile}
+rm(list = ls())
+# We can use a function simply called read.table, since our text file is already formatted as a table
+# We also have to assign this data to a variable.
+yData <- read.table("ps1_data_nohead.txt", header = FALSE, sep = "", dec = ".")
+## We are able to see "yData" in the global environment
+
+#We have to change the variable names for each column, we can use a function called names to do so.
+names(yData) <- c("price", "quantity", "weight", "hp", "ac", "firmId")
+
+#We now turn to finding the number of firms and the number of products that they each sell
+#Our first step is to find then number of unique firms, the highest FirmId is 23 but there are fewer in actuality
+length(unique(yData$firmId))
+
+#Next we create our table, we can use the table and as.data.frame functions to create our new matrix
+#We count the number of times each firmId is repeated in our dataset using table
+yProductsByFirms <- as.data.frame((table(yData$firmId)))
+#Rename the columns in our new matrix
+names(yProductsByFirms) <- c("firmId", "No.Products")
+
+#Print out our dataframe
+yProductsByFirms
+
+```
+
+
+## Problem 2: Loading Matlab Files, Searching and Installing Packages
+
+The first thing that we need to do is to install a package that will enable us to load in data from MatLab files. We need to search online for a R package which will enable us to load in data. After finding this package we need to run code that will let us install it into R. After installation we need to run code to enable use of the package's features. R utilizes dataframes and thus we will need to make sure our data is ultimately in that format as well.
+
+```{r loading}
+#I have chosen the package R.matlab to install
+#install.packages("R.matlab")
+#Enable the R.matlab package's features
+library(R.matlab)
+#Loading in my data file
+#Make sure the file we are loading from is in our working directory (check with getwd())
+#If it is not in the working directory, then either move the file or use the pathname to the file
+matdata <- readMat("ps0_debug3_data.mat")
+#Convert matdata to a dataframe
+matdata <- as.data.frame(matdata)
+
+```
+
+
+## Problem 3: Performing Matrix Multiplication and Returning Output
+In R we have to use specific symbols in order to perform matrix multiplication. In addition, we have to produce outputs and read specific columns and rows from our dataframes.
+
+```{r matrix}
+
+#In order to work with matrices, we have to understand matrix multiplication
+# The matrix multiplication symbol in R is %*%
+#There are also functions in the pracma package which can perform left and right matrix division
+m <- matrix(rexp(200, rate=.1), ncol=20)
+n <- matrix(rexp(200, rate=.1), ncol=10)
+solution <- m %*% n
+#Write out the name of the dataframe to output all of the columns
+matdata
+#Matrix Transpose
+t(matdata)
+#Just writing out the dataframe with '$' and then  the variable name will produce an output
+matdata$coefOfInterest
+#Printing out the first column of the dataframe
+matdata[,1]
+#Printing out the first row of the dataframe
+matdata[1,]
+
+```
+
+
+## Problem 4: OLS Estimation
+
+In this section we run OLS. There are also packages and functions that accomplish this, such as lm() and stargazer. We continue to use the same data as before. 
+
+```{r OLS}
+
+##First we need to normalize all the continuous variables in one of three possible ways:
+# 1) Divide by the mean
+# 2) Divide by the standard deviation
+# 3) Demean and Divide by the standard deviation
+
+data_normalize = function(dataframe, type){
+  if(type == 1){ # Divide by the mean
+    return(sweep(dataframe, MARGIN=2,FUN="/", STATS=colMeans(dataframe)))}
+  if(type == 2){ # Divide by the std. dev.
+    return(scale(dataframe, center = FALSE, scale = TRUE))}
+  if(type == 3){ # Demean and divide by the std. dev.
+    return (dataframe - m) / s}
+}
+
+#create a vector Y and a matrix X of covariates
+#define the Y vector:
+Y = data_normalize(as.matrix(yData["quantity"]),1)
+
+# define the X matrix.
+X = as.matrix(yData[,c(-2,-6)])
+X = cbind(rep(1, nrow(X)), cbind(data_normalize(X[,1:3],1),X[,4]))
+
+# get results:
+
+ps00_OLS <- function(X, Y){
+    nObs = nrow(Y) #Number of observations
+    nReg = ncol(X)-1 #Number of regressors
+    nDf = nObs - nReg #Number of degrees of freedom
+    
+    βHatOLS = Inverse(t(X) %*% X) %*% (t(X) %*% Y) #OLS estimates
+    YHatOLS = X %*% βHatOLS #Predicted Y
+    ϵHatOLS = Y - YHatOLS #Estimated residuals
+    f <- (t(ϵHatOLS) %*% ϵHatOLS)
+    ΣHatOLS = f[1] * (Inverse(t(X) %*% X)/nDf) #Estimated variance matrix
+    
+    return (list(βHatOLS, ϵHatOLS, ΣHatOLS,nObs))
+}
+
+sol <- ps00_OLS(X,Y)
+
+## '\' is not available in R
+
+##Determine OLS Standard Errors
+
+#Find s^2
+epsilon = Y - X %*% sol[[1]];
+sSquared = t(epsilon) %*% epsilon / (sol[[4]] - nrow(sol[[1]]));
+## Find Standard Errors
+seOls = sqrt(diag(sSquared[1]*Inverse(t(X)%*%X)));
+
+final <- as.data.frame(t(cbind(sol[[1]],seOls)))
+row.names(final) <- c("Coef", "SE")
+colnames(final)<-c("Constant", "price", "weight","hp","ac")
+final
+
+```
+
+## Problem 9: Non-Analytical OLS estimation
+
+Our next task is to develop an estimate for the OLS model that utilizes solving without using an analytic solution. For this purpose, we use the "nloptr" package so be sure to install that before running the following code.
+
+```{r nonlinear}
+
+#This is our function that we need to optimize for, specifically, we want to minimize the sum of the squared errors.
+
+ps00_OLS2 <- function (β, X, Y){
+  nObs = nrow(Y) #Number of observations
+  nReg = ncol(X)-1 #Number of regressors
+  nDf = nObs - nReg #Number of degrees of freedom
+    
+  YHat = X %*% β #Predicted Y
+  sumSqErr = t(Y - YHat) %*% (Y - YHat) #Estimated residuals
+  f <- (t(Y - YHat) %*% (Y - YHat))
+  ΣHat = f[1] * Inverse(t(X) %*% X)/nDf #Estimated variance matrix
+
+  return (sumSqErr)
+}
+
+# Now to find a beta that minimizes the sumSqErr term (or the sum of squared residuals in OLS terms). 
+#We will use the cobyla function to do so.
+βStart <- rep(1, ncol(X))
+NormX <- X
+NormY <- Y
+
+S <- cobyla(βStart, X = NormX, Y = NormY, ps00_OLS2,
+            nl.info = TRUE, control = list(xtol_rel = 1e-24, maxeval = 1e5))
+
+#Find s^2
+epsilon = Y - X %*% S$par;
+sSquared = t(epsilon) %*% epsilon / (nrow(Y) - length(S$par));
+## Find Standard Errors
+seOls = sqrt(diag(sSquared[1]*Inverse(t(X)%*%X)));
+
+final <- as.data.frame(t(cbind(S$par,seOls)))
+row.names(final) <- c("Coef", "SE")
+colnames(final)<-c("Constant", "price", "weight","hp","ac")
+final
+
+```
+
+## Problem 10: Instrumental Variable Regression using GMM
+
+To do IV we need a new data set; then with the same approach as in the previous question, we design a GMM objective function to optimize. There are GMM packages; here we code it from scratch.
+
+```{r gmm}
+#First, clear out the global environment and load in the new data
+rm(list = ls())
+
+cross_dsads <- readMat("ps0_q10_data.mat")
+cross_dsads <- as.data.frame(cross_dsads)
+
+#Output Data
+Y = as.matrix(cross_dsads["Y"])
+#Creating our regressor matrix with main regressor, price
+X = as.matrix(cross_dsads[,c(1,2,3,7)])
+X = cbind(rep(1, nrow(X)), X)
+#Create the regressor matrix with our instruments for price
+Z = as.matrix(cross_dsads[,1:6])
+Z = cbind(rep(1, nrow(Z)), Z)
+#Determine the dimensions of our weight matrix
+nMoms = ncol(Z)
+#Our Starting Beta Value for estimation
+βStart = Inverse(t(X) %*% Z %*% Inverse(t(Z) %*% Z)%*%t(Z) %*% X) %*% t(X)%*% Z %*% Inverse(t(Z) %*% Z)%*% t(Z) %*% Y
+#Create an identiy matrix for our weighting matrix
+W = eye(nMoms)
+
+# The objective function of the GMM is
+# actually given by a function of avg.
+# moments vector, using the previous 
+# inputs.
+
+objGMM <- function(βGMM, Y, X, Z, W){
+    nObs = nrow(Y)
+    vAvgMom = (1/nObs) * (t(Z)) %*% (Y - X%*%βGMM) # l*n * (n*1) = l*1
+    
+    J = nObs * t(vAvgMom) %*% W %*% vAvgMom
+    
+    return(J)
+}
+
+#First step of GMM
+βHatGMM <- optim(βStart, objGMM,Y = Y, X = X, Z = Z, W = W, method = "BFGS",
+             control = list(maxit = 1e5, reltol = 1e-12))  
+ϵHatGMM = Y - X %*% βHatGMM$par
+#Get optimal weight matrix
+SHat = Inverse((1/nrow(Y)) * t(Z) %*% Diag(diag(ϵHatGMM %*% t(ϵHatGMM))) %*% Z)
+#Second step of GMM
+βHatEGMM <- optim(βHatGMM$par, objGMM,Y = Y, X = X, Z = Z, W = SHat, method = "BFGS",
+             control = list(maxit = 10000, reltol = 1e-12)) 
+
+#Find s^2
+epsilon = Y - X %*% βHatEGMM$par;
+sSquared = t(epsilon) %*% epsilon / (nrow(Y) - length(βHatEGMM$par));
+## Find Standard Errors
+seOls = sqrt(diag(sSquared[1]*Inverse(t(X)%*%X)));
+
+final <- as.data.frame(t(cbind(βHatEGMM$par,seOls)))
+row.names(final) <- c("2 step GMM: ", "SE: ")
+colnames(final)<-c("Constant", "weight", "hp","ac","price")
+final
+
+
+```
+
+## Problem 11: Simulating an Integral with Random Draws
+
+In this problem, we will be simulating an integral with random draws. It is a numerical approximation.
+
+```{r Approx}
+NUM_DRAWS = 2000000
+MEAN = 2
+VAR = 5
+tempRand = randn(NUM_DRAWS,1)
+epsilon = sqrt(VAR)*tempRand + MEAN
+hist(epsilon,100)
+expectedValue = mean(epsilon^3)
+
+```
+
+
+
+
+

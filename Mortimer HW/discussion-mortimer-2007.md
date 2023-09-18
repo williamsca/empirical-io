@@ -11,9 +11,11 @@ answer a policy question, test models, or measure an effect?
 
 Why is the paper important according to the author? Is the author right?
 
+&nbsp;
 
 If the objective is a methodological advance, what is the problem that the author addresses? Why are existing techniques inadequate? How successful is the author’s approach? Could we use the approach elsewhere?
 
+&nbsp;
 
 What is the theoretical foundation for the empirical work? How appropriate is the model for the applications? How tight is the relationship between the theoretical and empirical models?
 
@@ -23,8 +25,15 @@ For papers using structural empirical models:
 - Why does the author use a structural empirical model? Could any of the
 questions the author asks be addressed with other approaches? What is
 the source of identification? Could the model be generalized in any obvious ways?
+
+&nbsp;
+
 - Does the structural model seem to capture the key features of the market? What elements are missing from the model that might be important? Is it clear what the implications of ignoring these elements are for the estimate the author obtains?
+
+&nbsp;
 - Are there overidentifying restrictions of the model that could be tested? Can you think of alternative models of behavior for the market?
+
+&nbsp;
 
 What are the data?
 
@@ -41,13 +50,19 @@ addressed? Do you believe the solutions?
 
 What variation in the data does the author rely on for identification of each element of the empirical model? What assumptions must be true about this variation for the author’s interpretation of the results to be correct? Are you worried about any of the assumptions?
 
+&nbsp;
+
 Does the author make distributional assumptions? If so, are they important for identification? Does the author evaluate the robustness of the results to the assumption?
 
 > Consumer preferences $\alpha_i$ are assumed Weibull.
 
 What are the conclusions of the author?
 
+&nbsp;
+
 What alternative interpretations are plausible? Does the author test against any plausible alternatives, or provide any practical reason why they are less likely?
+
+&nbsp;
 
 Mortimer, Julie Holland. "Price discrimination, copyright law, and technological innovation: Evidence from the introduction of DVDs." *The Quarterly Journal of Economics* 122, no. 3 (2007): 1307-1350.
 
