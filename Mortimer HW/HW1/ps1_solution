@@ -20,7 +20,7 @@ $$
 Solving for the $\delta$s as a function of observed market shares, prices, and $\lambda$ yields
 
 
-
+## Question 2
 
 ```{r}
 rm(list = ls())
@@ -32,4 +32,8 @@ dt <- fread(here("Mortimer HW", "data", "ps1_data_nohead.txt"))
 names(dt) <- c("price", "quantity", "weight", "hp", "ac", "firmId")
 
 ```
+
+## Question 3
+
+## Question 4
 
