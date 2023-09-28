@@ -1,0 +1,163 @@
+# Problem Set 1
+
+Consider a model of vertical differentiation similar to Bresnahan (1987). Each consumer $i$ has utility for product $j$ given by
+
+$$u_{ij} = \delta_j - \alpha_ip_j$$
+
+where $\delta_j$ is product quality and $\alpha_i$ is distributed exponential with parameter $\lambda$. 
+
+
+## Question 1
+
+The market share of good $j$, $S_j$, is equal to the probability that a consumer chooses good $j$ over all other goods. Because of the vertical structure, the outside good is compared only against the lowest-quality good:
+
+$$S_0(\lambda) = P(\delta_j / p_j \leq \alpha_i) = 1 - P(\alpha_i < \delta_j/p_j)$$
+
+where $\alpha_i \sim \text{Exp}(\lambda)$. Substituting in the exponential CDF yields
+
+$$S_j = \begin{cases} \exp(-\lambda(\delta_1/p_1)) & j = 0 \\
+\exp\left(\frac{-\lambda(\delta_2 - \delta_1)}{p_2-p_1}\right) - S_0 & j = 1 \\
+\exp\left(\frac{-\lambda(\delta_{j+1} - \delta_j)}{p_{j+1}-p_j}\right) - \exp\left(\frac{-\lambda(\delta_j - \delta_{j-1})}{p_j-p_{j-1}}\right) & 1 < j < J \\
+1 - \exp\left(\frac{-\lambda(\delta_J - \delta_{J-1})}{p_J-p_{J-1}}\right) & j = J \end{cases}$$
+
+We can solve sequentially to obtain $\delta$. In particular, $\delta_1 = -\frac{p_1}{\lambda}\ln S_0$ and so on.
+
+## Question 2
+
+I project $\delta$ onto the observed product characteristics:
+
+$$\delta_j = x_j\beta + \xi_j$$
+
+I then estimate $\beta$ by GMM using the moment conditions $E[x\xi] = 0$. First, I import the data and calculate market shares.
+
+```{r results='hide'}
+rm(list = ls())
+
+library(data.table)
+library(here)
+
+dt <- fread(here("Mortimer HW", "data", "ps1_data_nohead.txt"))
+names(dt) <- c("price", "quantity", "weight", "hp", "ac", "firmId")
+
+M <- 100000000 # market size
+lambda <- 4 * 10^(-6) # exponential shape parameter
+
+dt$share <- dt$quantity / M
+
+Q <- sum(dt$quantity) # total quantity
+S0 <- 1 - Q / M # outside good share
+```
+
+Next, I order the products by ascending price and loop through them to calculate $\delta$.
+
+```{r}
+setorder(dt, price)
+
+deltas <- rep(NA, nrow(dt))
+
+deltas[1] <- -dt$price[1] / lambda * log(S0)
+deltas[2] <- deltas[1] - log(S0 + dt$share[1]) *
+    (dt$price[2] - dt$price[1]) / lambda
+
+for (i in seq(3, nrow(dt) - 1)) {
+    deltas[i] <- deltas[i - 1] - (dt$price[i] - dt$price[i - 1]) *
+        log(dt$share[i - 1] +
+            exp(lambda * (deltas[i - 1] - deltas[i - 2]) /
+                (dt$price[i - 1] - dt$price[i - 2]))) /
+        lambda
+}
+deltas[nrow(dt)] <- log(1 - dt$share[nrow(dt)]) / lambda *
+    (dt$price[nrow(dt) - 1] - dt$price[nrow(dt)]) + deltas[nrow(dt) - 1]
+
+dt$delta <- deltas
+```
+
+I then define the GMM objective function, calculate an initial estimate of $\beta$ by OLS, and then estimate $\beta$ by GMM.
+
+```{r}
+# OLS
+lm_beta <- lm(delta ~ weight + hp + ac, data = dt)
+
+# GMM
+Y <- as.matrix(dt$delta)
+X <- as.matrix(dt[, .(1, weight, hp, ac)])
+
+nMoms <- ncol(X)
+
+b_start <- solve(t(X) %*% X) %*% t(X) %*% Y # starting beta value
+W <- diag(nMoms) # weighting matrix
+
+objGMM <- function(b, Y, X, W) {
+    nObs <- nrow(Y)
+    vAvgMom <- (1 / nObs) * (t(X)) %*% (Y - X %*% b)
+
+    J <- nObs * t(vAvgMom) %*% W %*% vAvgMom
+
+    return(J)
+}
+
+# First step of GMM
+b_hat_gmm <- optim(b_start, objGMM,
+    Y = Y, X = X, W = W, method = "BFGS",
+    control = list(maxit = 1e5, reltol = 1e-12)
+)
+ep_hat_gmm <- Y - X %*% b_hat_gmm$par
+
+# Get optimal weight matrix
+s_hat <- solve((1 / nrow(Y)) * t(X) %*%
+    diag(diag(ep_hat_gmm %*% t(ep_hat_gmm))) %*% X)
+
+# Second step of GMM
+b_hat_gmm_e <- optim(b_hat_gmm$par, objGMM,
+    Y = Y, X = X, W = s_hat,
+    method = "BFGS",
+    control = list(maxit = 10000, reltol = 1e-12)
+)
+
+# Find s^2
+epsilon <- Y - X %*% b_hat_gmm_e$par
+s_squared <- t(epsilon) %*% epsilon / (nrow(Y) - length(b_hat_gmm_e$par))
+
+## Find Standard Errors
+se_ols <- sqrt(diag(s_squared[1] * solve(t(X) %*% X)))
+
+final <- as.data.frame(t(cbind(b_hat_gmm_e$par, se_ols)))
+row.names(final) <- c("2 step GMM: ", "SE: ")
+colnames(final) <- c("Constant", "weight", "hp", "ac")
+final
+```
+
+# Question 3
+a. Here, GMM is equivalent to OLS. Both minimize the squared deviations under the assumption that $E[x\xi] = 0$.
+
+b. If $\lambda$ is unknown, then there is one more parameter to estimate. One can write $\delta$ as a function of observed shares, prices, and observable characteristics $x$ and then estimate $\beta$ and $\lambda$ jointly.
+
+c. Firm fixed effects help to account for correlation between the unobserved quality $\xi$ and observed characteristics $x$. They also improve the precision of the estimator at the cost of increasing the number of parameters to estimate.
+
+# Question 4
+a. If two cars have the same price, then they must have the same quality.
+
+b. The cross-price elasticities between two cars whose quality is not adjacent are zero. This is unlikely: if the price of a Subaru Impreza goes up, consumers will substitute to a variety of other cars, not just the model whose price is immediately above the Impreza's.
+
+# Question 5
+I derive the pricing equation under various assumptions on firm behavior.
+
+(a) **Marginal cost pricing**
+$$p_j = mc_j ~ \forall j$$
+
+(b) **Single product firms in a Bertrand Nash Equilibrium**
+$$\max_{p_j} S_j(p_j;p_{j-1}, p_{j+1})(p_j-mc_j) \implies \frac{\partial S_j}{\partial p_j}(p_j-mc_j) + S_j = 0$$
+
+(c) **Multiproduct firms in a Bertrand Nash Equilibrium**. Let $F_j$ denote the firm that owns product $j$. Firm $j$ chooses a vector of prices to satisfy 
+
+$$ \frac{\partial S_j}{\partial p_j} (p_j-mc_j) + S_j + \frac{\partial S_{j-1}}{\partial p_j} (p_{j-1} - mc_{j-1}) \boldsymbol{1}\{ F_{j-1} = F_{j} \} + \frac{\partial S_{j+1}}{\partial p_j} \boldsymbol{1} \{ F_{j+1} = F_{j} \} = 0 $$
+ 
+(d) **Perfect collusion**. This assumption means that $F_j = F_i ~ \forall i, j$. The pricing equation simplifies from (c) to
+
+$$ \frac{\partial S_j}{\partial p_j} (p_j-mc_j) + S_j + \frac{\partial S_{j-1}}{\partial p_j} (p_{j-1} - mc_{j-1}) + \frac{\partial S_{j+1}}{\partial p_j} = 0 $$
+
+# Question 6
+
+
+
+
