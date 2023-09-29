@@ -157,7 +157,43 @@ $$ \frac{\partial S_j}{\partial p_j} (p_j-mc_j) + S_j + \frac{\partial S_{j-1}}{
 $$ \frac{\partial S_j}{\partial p_j} (p_j-mc_j) + S_j + \frac{\partial S_{j-1}}{\partial p_j} (p_{j-1} - mc_{j-1}) + \frac{\partial S_{j+1}}{\partial p_j} = 0 $$
 
 # Question 6
+I assume that marginal cost is given by
 
+$$mc_j = x_j\gamma + \eta q_j + \omega_j$$
+
+and that $E[\omega x] = 0$. I report estimates below.
+
+(a) **Marginal cost:**
+$$\begin{aligned}
+    \beta &= (98532224, 31383, 342692, 23749922)\\
+    \gamma &= (-10158, 3.4668, 167.32, 405.01)\\
+    \eta &=  -0.0737\\ 
+\end{aligned}$$
+
+(b) **Single-product firms:**
+$$\begin{aligned}
+    \beta &= (95893837, 32088, 350238, 21953881)\\
+    \gamma &= (384, -2.56, 176.82, 7630.05)\\
+    \eta &=  -0.0410\\ 
+\end{aligned}$$
+
+
+(c) **Multi-product firms:**
+$$\begin{aligned}
+    \beta &= (95907410, 32287, 336786, 23652654)\\
+    \gamma &= (-9368.42, -2.044, 304.87, 1789.26)\\
+    \eta &= -0.0034\\ 
+\end{aligned}$$
+
+Regardless of the supply assumption, quality is increasing in weight, horsepower, and air conditioning. The $\eta$ estimates are less than zero, suggesting some economies of scale for car manufacturers.
+
+# Question 7
+Separately estimating demand and pricing equations is not equivalent to estimating them jointly. The optimal weighting matrix will differ and this will result in different estimated parameters.
+
+# Question 8
+One way to check the validity of the pricing assumptions is to look at whether the marginal costs are non-negative.
+
+Another might be to see how the prices of adjacent goods change after the entry of a new product. If multiproduct firms are pricing strategically, then a new product owned by a different firm should have a larger effect on prices than a new product owned by the same firm. 
 
 
 
