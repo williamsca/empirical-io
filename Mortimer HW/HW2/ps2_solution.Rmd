@@ -1,0 +1,22 @@
+# Problem Set 2
+### Q1: Derive estimating equations
+
+Consider the logit model given by
+
+$$\begin{aligned} u_{ijt} &= \delta^*_{jt} + \epsilon_{ijt} \\
+\delta^*_{jt} &= x_{jt}\beta - \alpha p_{jt} + \xi_{jt}\end{aligned}$$
+
+where $\epsilon_{ijt}$ is i.i.d. extreme value. First, we estimate each year separately. Under this assumption, the conditional choice probability is given by
+
+$$S_{jt} = \frac{\exp(x_{jt}\beta_t - \alpha_t p_{jt} + \xi_{jt})}{\sum_{k=1}^J \exp(x_{kt}\beta_t - \alpha_t p_{kt} + \xi_{kt})}$$
+
+Note that the coefficients are indexed by year $t$. To proceed, I normalize the utility of the outside option to $\xi_{0t} = 0$. Then, I divide by the choice probability of the outside option and take logs to obtain
+
+$$\ln(S_{jt}) = x_{jt}\beta_t - \alpha_t p_{jt} - \ln(S_{0t}) + \xi_{jt}$$
+
+### Q2
+If we pool the data across years, the derivation would exclude the subscript $t$ on $\alpha$ and $\beta$.
+
+### Q3
+I estimate the demand system parameters by GMM using only demand-side moment conditions. Because price is endogenous, I construct an instrument $Z_{jt}$ using BLP instruments (i.e., the characteristics of competing products in a given year).
+
