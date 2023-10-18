@@ -44,10 +44,6 @@ objGMM <- function(b, W, X, Y, Z) {
     return(nObs * t(vAvgMom) %*% W %*% vAvgMom)
 }
 
-dim(t(Z))
-
-t(Z) %*% (Y - X %*% b_hat_gmm$par)
-
 # First step of GMM
 b_hat_gmm <- optim(b_start, objGMM,
     W = W, X = X, Y = Y, Z = Z, method = "BFGS",
