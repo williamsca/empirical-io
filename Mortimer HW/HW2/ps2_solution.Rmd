@@ -1,4 +1,6 @@
 # Problem Set 2
+
+# Vanilla Logit
 ### Q1: Derive estimating equations
 
 Consider the logit model given by
@@ -104,3 +106,73 @@ row.names(final) <- c("2 step GMM: ", "SE: ")
 colnames(final) <- v_cov
 final
 ```
+
+### Q4
+I compute the own and cross-price derivatives
+
+$$\begin{aligned}
+\frac{\partial S_{jt}}{\partial p_{jt}} &= \alpha_tS_{jt}(S_{jt}-1) \\
+\frac{\partial S_{jt}}{\partial p_{kt}} &= \alpha_tS_{jt}S_{kt}
+\end{aligned}$$
+
+```{r}
+## Cross-Price Elasticites
+setorder(dt, -quantity)
+
+dt_top10 <- head(dt[year == 1990], 10)
+alpha <- b_hat_gmm_e$par[1]
+
+# Compute the matrix of elasticities
+dt_elas <- CJ(
+    own_product = dt_top10$car_id,
+    cross_product = dt_top10$car_id
+)
+
+dt_elas <- merge(dt_elas, dt_top10[, .(car_id, price, share)],
+    by.x = "own_product", by.y = "car_id"
+)
+dt_elas <- merge(dt_elas, dt_top10[, .(car_id, price, share)],
+    by.x = "cross_product", by.y = "car_id"
+)
+dt_elas[
+    own_product == cross_product,
+    price_elas := alpha * price.x * (share.x - 1)
+]
+dt_elas[own_product != cross_product, price_elas := alpha * price.y * share.y]
+
+dcast(dt_elas, own_product ~ cross_product, value.var = "price_elas")
+```
+
+# Nested Logit
+### Q5
+
+**a)** The market share for a single product in a nested logit model is given by the product of the group choice probability and the within-group choice probability
+
+$$S_{j} = \frac{\exp(\delta^*_j/(1-\sigma))}{D_g^{\sigma}\left[\sum_gD_g^{1-\sigma}\right]}$$
+
+where $$D_g = \sum_{j \in \mathcal{J}_g}\exp(\delta_j^*/(1-\sigma))$$ is the group choice probability.
+
+**b)** Solving for $\delta_j^*$ under the assumption that the outside option is normalized to zero, I obtain
+
+$$\delta_j^* = \ln S_j + \sigma \ln D_g + \ln \left[\sum_g D_g^{1-\sigma}\right]$$
+
+**c)** The market share for a single product in the nested logit model after the Berry (1994) inversion is given by
+
+$$\ln S_j = x_j\beta - \alpha p_j + \sigma \ln (\bar{S}_{j|g}) + \ln S_0 + \xi_j$$
+
+where $\bar{S}_{j|g}$ is the within-group market share of $j$ and $S_0$ is the share of the outside option.
+
+### Q6
+
+**a)** The nested logit relaxes the IIA assumption of the nested logit, allowing for substitution patterns that are *not* proportional to shares.
+
+**b)** All forms of nested logit suffer from ``too much'' mass in the tails. Regardless of the product's characteristics, there will always be some consumers whose $\xi$ is sufficiently large to make the product their most preferred option. In short: crummy products get bought too much.
+
+### Q7
+
+
+
+
+
+
+

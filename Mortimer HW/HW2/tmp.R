@@ -73,3 +73,31 @@ final <- as.data.frame(t(cbind(b_hat_gmm_e$par, se_ols)))
 row.names(final) <- c("2 step GMM: ", "SE: ")
 colnames(final) <- v_cov
 final
+
+## Cross-Price Elasticites
+setorder(dt, -quantity)
+
+dt_top10 <- head(dt[year == 1990], 10)
+alpha <- b_hat_gmm_e$par[1]
+
+# Compute the matrix of elasticities
+dt_elas <- CJ(
+    own_product = dt_top10$car_id,
+    cross_product = dt_top10$car_id
+)
+
+dt_elas <- merge(dt_elas, dt_top10[, .(car_id, price, share)],
+                 by.x = "own_product", by.y = "car_id")
+dt_elas <- merge(dt_elas, dt_top10[, .(car_id, price, share)],
+                 by.x = "cross_product", by.y = "car_id")
+dt_elas[own_product == cross_product,
+    price_elas := alpha * price.x * (share.x - 1)]
+dt_elas[own_product != cross_product, price_elas := alpha * price.y * share.y]
+
+dt_elas <- dcast(dt_elas, own_product ~ cross_product, value.var = "price_elas")
+
+# Reshape the data to wide format to get the matrix
+elasticity_matrix_wide <- dcast(elasticity_matrix, own_product ~ cross_product,
+                                value.var = "elasticity")
+
+print(elasticity_matrix_wide)
