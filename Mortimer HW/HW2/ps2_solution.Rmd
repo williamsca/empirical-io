@@ -170,6 +170,12 @@ where $\bar{S}_{j|g}$ is the within-group market share of $j$ and $S_0$ is the s
 
 ### Q7
 
+**a)** See attached code ("ps2_gmm_nest.m")
+
+**b)** No. Identification in the random-coefficient logit model comes from variation in the choice set. With data on only one market (i.e., nationwide car sales for a single year), the random coefficient logit model is not identified.
+
+**c)** 
+
 
 
 
