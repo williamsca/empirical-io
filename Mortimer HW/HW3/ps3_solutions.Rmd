@@ -1,0 +1,158 @@
+# Problem Set 3
+
+## Single-Agent Dynamic Optimization
+
+### Question 1
+This equation represents the maximum expected discounted lifetime utility for an agent observed in state $x$ for a given choice of whether to replace the bus engine $i \in \{0,1\}$:
+
+$$EV^1(x,i) = \int_y \log \left\{\sum_{j \in C(y)} \exp[u(y, j;\theta) + \beta EV^0(y,j)]\right\}p(dy|x,i)$$
+
+Because this is a contraction mapping, $EV_{\theta}$ is the unique solution to this equation under $EV^1 = EV^0$.
+
+The second equation is the multinomial choice probability of option $i$ given observed state $x_t$ and parameter vector $\theta$:
+
+$$P(i_t|x_t;\theta) = \frac{\exp(u(x_t, i_t;\theta) + \beta EV(x_t,i_t;\theta))}{\sum_{i = 0,1}\exp(u(x_t,i;\theta) + \beta EV(x_t,i;\theta))}$$
+
+```{r results='hide'}
+rm(list = ls())
+
+# Question 1(ii) ----
+# * Initialize parameters
+RC <- 9.7558
+c <- 2.6275
+p <- .3489
+q <- .6394
+beta <- .9999
+
+mileage_bins <- seq(from = 0, to = 89, by = 1)
+
+# Initialize the transition matrix
+transition_matrix <- matrix(0, nrow = 90, ncol = 90)
+
+# Populate the transition matrix with probabilities
+for (i in 1:90) {
+    if (i == 89) {
+        transition_matrix[i, i] <- p
+        transition_matrix[i, i + 1] <- 1 - q
+    } else if (i == 90) {
+        transition_matrix[i, i] <- 1
+    } else {
+        transition_matrix[i, i] <- p
+        transition_matrix[i, i + 1] <- q
+        transition_matrix[i, i + 2] <- 1 - p - q
+    }
+}
+```
+
+```{r}
+library(data.table)
+library(ggplot2)
+
+# Expected value function initialization
+EV <- rep(1, 90)
+c_vec <- 0:89 * c
+
+# Bellman iteration to calculate expected value
+for (i in 1:1000) {
+    EV_new <- transition_matrix %*%
+        (log(exp(-c_vec + beta * EV) + exp(-RC + beta * EV[1])))
+
+    # Recentering step: subtract the minimum EV to prevent numerical issues
+    EV_new <- EV_new - min(EV_new)
+
+    if (max(abs(EV_new - EV)) < 1e-6) { # Convergence check
+        print(paste0("Converged at iteration ", i))
+        break
+    }
+
+    EV <- EV_new
+}
+
+# Plot the expected value function
+dt <- data.table(mileage_bins, EV)
+
+ggplot(dt, aes(x = mileage_bins, y = EV)) +
+    geom_line() +
+    labs(x = "Mileage", y = "Expected Value", title = "Expected Value Function") +
+    theme_classic()
+```
+
+### Question 2
+Replicating Rust (1987).
+
+```{r}
+library(here)
+library(data.table)
+library(R.matlab)
+
+# Load data ----
+dt <- as.data.table(readMat(here("Mortimer HW", "data", "ps3_data.mat")))
+names(dt) <- c("bus_id", "group", "year", "month", "mileage", "mileage_diff")
+
+# Estimate transition probabilities
+dt[, mileage_int := floor(mileage / 5000)]
+dt[, mileage_int_lag := shift(mileage_int, 1L, type = "lag"), by = bus_id]
+dt[is.na(mileage_int_lag), mileage_int_lag := mileage_int]
+dt[, mileage_diff_int := mileage_int - mileage_int_lag]
+
+# Determine when engine is replaced
+dt[, d := fifelse(mileage_diff_int < 0, 1, 0)]
+
+p <- nrow(dt[mileage_diff_int == 0]) / nrow(dt[mileage_diff_int >= 0])
+q <- nrow(dt[mileage_diff_int == 1]) / nrow(dt[mileage_diff_int >= 0])
+
+# Bellman iteration to calculate expected value given x = 0, 1, ..., 89
+ev_func <- function(theta) {
+    RC <- theta[2]
+    c_vec <- theta[1] * 0:89
+
+    EV <- rep(0, 90)
+    for (i in 1:1000) {
+        # Compute the max to use in the Log-Sum-Exp trick
+        max_val <- pmax(-c_vec + EV, -RC + EV[1])
+
+        # Compute the stable log-sum-exp expression
+        EV_new <- transition_matrix %*%
+            (max_val + log(exp(-c_vec + EV - max_val) +
+                exp(-RC + EV[1] - max_val)))
+
+        if (any(is.na(EV_new))) {
+            warning(paste0("NA values found at iteration ", i))
+            print(theta)
+            break # Exit the loop if NA values are found
+        }
+
+        # Recentering step: subtract the minimum EV to prevent numerical issues
+        EV_new <- EV_new - min(EV_new)
+
+        if (max(abs(EV_new - EV)) < 1e-6) { # Convergence check
+            print(paste0("Converged at iteration ", i))
+            return(EV_new)
+        }
+
+        EV <- EV_new
+    }
+}
+
+# Define partial likelihood function
+P_0 <- function(theta, d_data, x_data) {
+    RC <- theta[2]
+    c <- theta[1]
+
+    EV <- ev_func(theta)
+
+    denom <- (1 + exp(x_data * c - RC - beta * EV[x_data + 1] + beta * EV[1]))
+    return(abs(d_data - 1 / denom))
+}
+
+L_p <- function(theta, d, x) {
+    return(-sum(log(P_0(theta, d, x))))
+}
+
+theta <- optim(c(5, 5), L_p, d = dt$d,
+    x = dt$mileage_int, method = "Nelder-Mead")
+print(theta$par)
+```
+
+The contraction mapping has issues when searching over very negative values of $c$ and $RC$. This is because exponentiating large values overflows the memory and results in NaN values. While my replacement cost parameter is close-ish to Rust, I am unable to get a positive maintenance cost parameter.
+
